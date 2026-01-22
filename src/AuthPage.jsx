@@ -32,7 +32,7 @@ export default function AuthPage() {
             setError(e.message);
         }
     };
-    // Logic con Email
+    // Login con Email
     const loginEmail = async () => {
         setError("");
         try {

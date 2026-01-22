@@ -27,6 +27,50 @@ export default function App() {
             alert("Error al comprobar el usuario");
         }
     };
+    // crear libro de prueba (POST /api/books)
+    const crearLibroDemo = async () => {
+        try {
+            const token = await auth.currentUser.getIdToken();
+
+            const res = await fetch(`${process.env.REACT_APP_API_URL}/api/books`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${token}`,
+                },
+                body: JSON.stringify({
+                    title: "Libro de prueba",
+                    author: "Autor X",
+                    status: "to_read",
+                }),
+            });
+
+            const data = await res.json();
+            alert(`Libro creado con id: ${data.id}`);
+        } catch (e) {
+            alert("Error al crear el libro");
+        }
+    };
+
+    // listar libros (GET /api/books)
+    const listarLibros = async () => {
+        try {
+            const token = await auth.currentUser.getIdToken();
+
+            const res = await fetch(`${process.env.REACT_APP_API_URL}/api/books`, {
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                },
+            });
+
+            const data = await res.json();
+            console.log("Mis libros:", data);
+            alert(`Tienes ${data.length} libros (míralos en consola)`);
+        } catch (e) {
+            alert("Error al listar los libros");
+        }
+    };
+
 
 
 
@@ -45,11 +89,12 @@ export default function App() {
     return (
 
         <div>
-            <h2 style={{color: "red"}}>ESTOY EN EL APP NUEVO</h2>
 
             <h1>ReadRoom</h1>
             <p>Sesión iniciada: {user.email}</p>
             <button onClick={probarMe}>Probar /api/me</button>
+            <button onClick={crearLibroDemo}>Crear libro demo</button>
+            <button onClick={listarLibros}>Listar mis libros</button>
             <button onClick={() => signOut(auth)}>Cerrar sesión</button>
         </div>
     );
