@@ -67,9 +67,16 @@ export default function App() {
             });
 
             const data = await res.json();
-            //console.log("Mis libros:", data);
-            //alert(`Tienes ${data.length} libros (míralos en consola)`);
-            setBooks(data); //ahora guardamos los libros en el estado
+            console.log("GET /api/books status:", res.status);
+            console.log("GET /api/books data:", data);
+
+            if (!res.ok) {
+                alert(data.error || "Error al listar libros");
+                setBooks([]);
+                return;
+            }
+
+            setBooks(Array.isArray(data) ? data : []);
         } catch (e) {
             alert("Error al listar los libros");
         }
@@ -95,9 +102,13 @@ export default function App() {
         }
     };
     // separar libros por "shelves" (status)
-    const wantToRead = books.filter((b) => b.status === "to_read");
-    const currentlyReading = books.filter((b) => b.status === "reading");
-    const interrupted = books.filter((b) => b.status === "paused");
+    //const wantToRead = books.filter((b) => b.status === "to_read");
+    //const currentlyReading = books.filter((b) => b.status === "reading");
+    //const interrupted = books.filter((b) => b.status === "paused");
+    const wantToRead = (Array.isArray(books) ? books : []).filter((b) => b.status === "to_read");
+    const currentlyReading = (Array.isArray(books) ? books : []).filter((b) => b.status === "reading");
+    const interrupted = (Array.isArray(books) ? books : []).filter((b) => b.status === "paused");
+
 
     // sección shelf con portadas
     const Section = ({ title, items }) => (
