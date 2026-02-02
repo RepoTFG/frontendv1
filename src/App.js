@@ -23,6 +23,17 @@ function BookDetail({
                         noteQuote,
                         setNoteQuote,
                         crearNota,
+                        borrarNota,
+                        editingNoteId,
+                        editText,
+                        setEditText,
+                        editChapter,
+                        setEditChapter,
+                        editQuote,
+                        setEditQuote,
+                        empezarEditarNota,
+                        cancelarEditarNota,
+                        guardarEdicionNota,
                     }) {
     return (
         <div style={{ padding: 16, maxWidth: 520, margin: "0 auto" }}>
@@ -137,21 +148,81 @@ function BookDetail({
                                 background: "white",
                             }}
                         >
-                            {n.chapter && (
-                                <div style={{ fontSize: 12, opacity: 0.7, marginBottom: 6 }}>
-                                    {n.chapter}
+                            {editingNoteId === n.id ? (
+                                <div style={{ display: "grid", gap: 8 }}>
+                                    <input
+                                        value={editChapter}
+                                        onChange={(e) => setEditChapter(e.target.value)}
+                                        placeholder="Capítulo / parte (opcional)"
+                                        style={{ padding: 8 }}
+                                    />
+
+                                    <textarea
+                                        value={editText}
+                                        onChange={(e) => setEditText(e.target.value)}
+                                        rows={4}
+                                        style={{ padding: 8, resize: "vertical" }}
+                                    />
+
+                                    <input
+                                        value={editQuote}
+                                        onChange={(e) => setEditQuote(e.target.value)}
+                                        placeholder="Frase destacada (opcional)"
+                                        style={{ padding: 8 }}
+                                    />
+
+                                    <div style={{ display: "flex", gap: 8 }}>
+                                        <button
+                                            onClick={() => guardarEdicionNota(n.id)}
+                                            style={{ padding: "6px 10px" }}
+                                        >
+                                            ✅ Guardar
+                                        </button>
+                                        <button
+                                            onClick={cancelarEditarNota}
+                                            style={{ padding: "6px 10px" }}
+                                        >
+                                            ✖ Cancelar
+                                        </button>
+                                    </div>
                                 </div>
-                            )}
-                            <div style={{ whiteSpace: "pre-wrap" }}>{n.text}</div>
-                            {n.quote && (
-                                <div style={{ marginTop: 8, fontStyle: "italic", opacity: 0.8 }}>
-                                    “{n.quote}”
-                                </div>
-                            )}
-                            {n.createdAt && (
-                                <div style={{ marginTop: 8, fontSize: 11, opacity: 0.6 }}>
-                                    {new Date(n.createdAt).toLocaleString()}
-                                </div>
+                            ) : (
+                                <>
+                                    {n.chapter && (
+                                        <div style={{ fontSize: 12, opacity: 0.7, marginBottom: 6 }}>
+                                            {n.chapter}
+                                        </div>
+                                    )}
+
+                                    <div style={{ whiteSpace: "pre-wrap" }}>{n.text}</div>
+
+                                    {n.quote && (
+                                        <div style={{ marginTop: 8, fontStyle: "italic", opacity: 0.8 }}>
+                                            “{n.quote}”
+                                        </div>
+                                    )}
+
+                                    {n.createdAt && (
+                                        <div style={{ marginTop: 8, fontSize: 11, opacity: 0.6 }}>
+                                            {new Date(n.createdAt).toLocaleString()}
+                                        </div>
+                                    )}
+
+                                    <div style={{ marginTop: 8, display: "flex", gap: 8 }}>
+                                        <button
+                                            onClick={() => empezarEditarNota(n)}
+                                            style={{ padding: "6px 10px" }}
+                                        >
+                                            ✏️ Editar
+                                        </button>
+                                        <button
+                                            onClick={() => borrarNota(n.id)}
+                                            style={{ padding: "6px 10px" }}
+                                        >
+                                            🗑️ Borrar
+                                        </button>
+                                    </div>
+                                </>
                             )}
                         </div>
                     ))}
@@ -160,6 +231,8 @@ function BookDetail({
         </div>
     );
 }
+
+
 
 export default function App() {
     const [user, setUser] = useState(null); // guardamos user autenticado
@@ -175,6 +248,11 @@ export default function App() {
     const [noteChapter, setNoteChapter] = useState(""); // capítulo/parte
     const [noteQuote, setNoteQuote] = useState(""); // cita/frase
     const [notesLoading, setNotesLoading] = useState(false);
+    const [editingNoteId, setEditingNoteId] = useState(null); // id de nota en edición
+    const [editText, setEditText] = useState("");            // texto editado
+    const [editChapter, setEditChapter] = useState("");      // capítulo editado
+    const [editQuote, setEditQuote] = useState("");          // cita editada
+
 
 
     // probar /api/me (manda token al backend)
@@ -313,6 +391,7 @@ export default function App() {
     };
 
     const crearNota = async (bookId) => {
+
         const text = noteText.trim();
         if (!text) return alert("Escribe una nota primero");
 
@@ -348,9 +427,75 @@ export default function App() {
             alert("Error al guardar la nota");
         }
     };
+    const borrarNota = async (noteId) => {
+        console.log("Intentando borrar nota:", noteId);
+        const ok = window.confirm("¿Seguro que quieres borrar esta nota?");
+        if (!ok) return;
 
+        try {
+            const token = await auth.currentUser.getIdToken();
+            const res = await fetch(`${process.env.REACT_APP_API_URL}/api/notes/${noteId}`, {
+                method: "DELETE",
+                headers: { Authorization: `Bearer ${token}` },
+            });
+            const data = await res.json();
+            if (!res.ok) {
+                alert(data.error || "Error al borrar la nota");
+                return;
+            }
+            // refrescar notas del libro actual
+            if (selectedBook) cargarNotas(selectedBook.id);
+        } catch (e) {
+            alert("Error al borrar la nota");
+        }
+    };
 
+    const empezarEditarNota = (note) => {
+        setEditingNoteId(note.id);
+        setEditText(note.text || "");
+        setEditChapter(note.chapter || "");
+        setEditQuote(note.quote || "");
+    };
 
+    const cancelarEditarNota = () => {
+        setEditingNoteId(null);
+        setEditText("");
+        setEditChapter("");
+        setEditQuote("");
+    };
+
+    const guardarEdicionNota = async (noteId) => {
+        const text = editText.trim();
+        if (!text) return alert("El texto no puede estar vacío");
+
+        try {
+            const token = await auth.currentUser.getIdToken();
+            const res = await fetch(`${process.env.REACT_APP_API_URL}/api/notes/${noteId}`, {
+                method: "PATCH",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${token}`,
+                },
+                body: JSON.stringify({
+                    text,
+                    chapter: editChapter.trim(),
+                    quote: editQuote.trim(),
+                }),
+            });
+
+            const data = await res.json();
+            if (!res.ok) {
+                alert(data.error || "Error al editar la nota");
+                return;
+            }
+
+            // refrescar y salir del modo edición
+            if (selectedBook) await cargarNotas(selectedBook.id);
+            cancelarEditarNota();
+        } catch (e) {
+            alert("Error al editar la nota");
+        }
+    };
 
     // sección shelf con portadas
     const Section = ({ title, items }) => (
@@ -537,7 +682,6 @@ export default function App() {
     }, [selectedBook]);
 
 
-
     if (loading) return <p>Cargando...</p>; // si aun comprobando sesión
     if (!user) return <AuthPage />; // no usuario logueado
     // si hay usuario logueado --> página
@@ -545,7 +689,10 @@ export default function App() {
         return (
             <BookDetail
                 book={selectedBook}
-                onBack={() => setSelectedBook(null)}
+                onBack={() => {
+                    setSelectedBook(null);
+                    cancelarEditarNota();
+                }}
                 cambiarEstado={cambiarEstado}
                 borrarLibro={borrarLibro}
                 notes={notes}
@@ -557,6 +704,19 @@ export default function App() {
                 noteQuote={noteQuote}
                 setNoteQuote={setNoteQuote}
                 crearNota={crearNota}
+                borrarNota={borrarNota}
+                editingNoteId={editingNoteId}
+                editText={editText}
+                setEditText={setEditText}
+                editChapter={editChapter}
+                setEditChapter={setEditChapter}
+                editQuote={editQuote}
+                setEditQuote={setEditQuote}
+                empezarEditarNota={empezarEditarNota}
+                cancelarEditarNota={cancelarEditarNota}
+                guardarEdicionNota={guardarEdicionNota}
+
+
             />
         );
     }
