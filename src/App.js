@@ -8,6 +8,159 @@ import { onAuthStateChanged, signOut } from "firebase/auth";
 import { auth } from "./firebase"; // config de firebase
 import AuthPage from "./AuthPage"; // login
 
+// muevo bookDetail fuera de la App para evitar perder el foco al escribir en los inputs
+function BookDetail({
+                        book,
+                        onBack,
+                        cambiarEstado,
+                        borrarLibro,
+                        notes,
+                        notesLoading,
+                        noteText,
+                        setNoteText,
+                        noteChapter,
+                        setNoteChapter,
+                        noteQuote,
+                        setNoteQuote,
+                        crearNota,
+                    }) {
+    return (
+        <div style={{ padding: 16, maxWidth: 520, margin: "0 auto" }}>
+            <button onClick={onBack} style={{ marginBottom: 12 }}>
+                ← Volver
+            </button>
+
+            <div style={{ display: "flex", gap: 12 }}>
+                {/* portada */}
+                {book.cover?.url ? (
+                    <img
+                        src={book.cover.url}
+                        alt={book.title}
+                        style={{
+                            width: 120,
+                            height: 180,
+                            objectFit: "cover",
+                            borderRadius: 10,
+                            border: "1px solid #eee",
+                        }}
+                    />
+                ) : (
+                    <div
+                        style={{
+                            width: 120,
+                            height: 180,
+                            background: "#f0f0f0",
+                            borderRadius: 10,
+                            border: "1px solid #eee",
+                        }}
+                    />
+                )}
+
+                {/* info */}
+                <div style={{ flex: 1 }}>
+                    <h2 style={{ margin: 0 }}>{book.title}</h2>
+                    <p style={{ margin: "6px 0", opacity: 0.8 }}>{book.author}</p>
+
+                    <div style={{ marginTop: 10 }}>
+                        <div style={{ fontSize: 12, opacity: 0.7, marginBottom: 6 }}>
+                            Estado
+                        </div>
+
+                        {/* reutilizamos PATCH */}
+                        <select
+                            value={book.status || "to_read"}
+                            onChange={(e) => cambiarEstado(book.id, e.target.value)}
+                            style={{ padding: 8, width: "100%" }}
+                        >
+                            <option value="to_read">Want to read</option>
+                            <option value="reading">Currently reading</option>
+                            <option value="paused">Interrupted</option>
+                            <option value="finished">Finished</option>
+                        </select>
+
+                        <button
+                            onClick={() => borrarLibro(book.id)}
+                            style={{ marginTop: 10, width: "100%" }}
+                        >
+                            🗑️ Borrar libro
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <hr style={{ margin: "16px 0" }} />
+
+            {/* placeholder del diario */}
+            <h3>Diary</h3>
+
+            <div style={{ display: "grid", gap: 8, marginBottom: 12 }}>
+                <input
+                    placeholder="Capítulo / parte (opcional)"
+                    value={noteChapter}
+                    onChange={(e) => setNoteChapter(e.target.value)}
+                    style={{ padding: 8 }}
+                />
+
+                <textarea
+                    placeholder="Escribe tu nota..."
+                    value={noteText}
+                    onChange={(e) => setNoteText(e.target.value)}
+                    rows={4}
+                    style={{ padding: 8, resize: "vertical" }}
+                />
+
+                <input
+                    placeholder="Frase destacada (opcional)"
+                    value={noteQuote}
+                    onChange={(e) => setNoteQuote(e.target.value)}
+                    style={{ padding: 8 }}
+                />
+
+                <button onClick={() => crearNota(book.id)} style={{ padding: 10 }}>
+                    Guardar nota
+                </button>
+            </div>
+
+            {notesLoading ? (
+                <p style={{ opacity: 0.7 }}>Cargando notas...</p>
+            ) : notes.length === 0 ? (
+                <p style={{ opacity: 0.7 }}>Todavía no hay notas para este libro.</p>
+            ) : (
+                <div style={{ display: "grid", gap: 10 }}>
+                    {notes.map((n) => (
+                        <div
+                            key={n.id}
+                            style={{
+                                border: "1px solid #eee",
+                                borderRadius: 10,
+                                padding: 10,
+                                background: "white",
+                            }}
+                        >
+                            {n.chapter && (
+                                <div style={{ fontSize: 12, opacity: 0.7, marginBottom: 6 }}>
+                                    {n.chapter}
+                                </div>
+                            )}
+                            <div style={{ whiteSpace: "pre-wrap" }}>{n.text}</div>
+                            {n.quote && (
+                                <div style={{ marginTop: 8, fontStyle: "italic", opacity: 0.8 }}>
+                                    “{n.quote}”
+                                </div>
+                            )}
+                            {n.createdAt && (
+                                <div style={{ marginTop: 8, fontSize: 11, opacity: 0.6 }}>
+                                    {new Date(n.createdAt).toLocaleString()}
+                                </div>
+                            )}
+                        </div>
+                    ))}
+                </div>
+            )}
+        </div>
+    );
+}
+
 export default function App() {
     const [user, setUser] = useState(null); // guardamos user autenticado
     const [loading, setLoading] = useState(true); // controlar si aun estamos comprobando la sesión (T: cargando; F: sabemos si hay)
@@ -16,6 +169,13 @@ export default function App() {
     const [results, setResults] = useState([]);    // resultados de la búsqueda
     const [searching, setSearching] = useState(false); // para mostrar “buscando...”
     const [selectedBook, setSelectedBook] = useState(null); // libro seleccionado (vista detalle)
+    // estados para notas
+    const [notes, setNotes] = useState([]);        // notas del libro seleccionado
+    const [noteText, setNoteText] = useState("");  // texto de la nota
+    const [noteChapter, setNoteChapter] = useState(""); // capítulo/parte
+    const [noteQuote, setNoteQuote] = useState(""); // cita/frase
+    const [notesLoading, setNotesLoading] = useState(false);
+
 
     // probar /api/me (manda token al backend)
     const probarMe = async () => {
@@ -128,6 +288,68 @@ export default function App() {
             alert("Error al borrar el libro");
         }
     };
+
+    const cargarNotas = async (bookId) => {
+        setNotesLoading(true);
+        try {
+            const token = await auth.currentUser.getIdToken();
+            const res = await fetch(`${process.env.REACT_APP_API_URL}/api/books/${bookId}/notes`, {
+                headers: { Authorization: `Bearer ${token}` },
+            });
+
+            const data = await res.json();
+            if (!res.ok) {
+                alert(data.error || "Error al cargar notas");
+                setNotes([]);
+                return;
+            }
+
+            setNotes(Array.isArray(data) ? data : []);
+        } catch (e) {
+            alert("Error al cargar notas");
+        } finally {
+            setNotesLoading(false);
+        }
+    };
+
+    const crearNota = async (bookId) => {
+        const text = noteText.trim();
+        if (!text) return alert("Escribe una nota primero");
+
+        try {
+            const token = await auth.currentUser.getIdToken();
+            const res = await fetch(`${process.env.REACT_APP_API_URL}/api/books/${bookId}/notes`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${token}`,
+                },
+                body: JSON.stringify({
+                    chapter: noteChapter.trim(),
+                    text,
+                    quote: noteQuote.trim(),
+                }),
+            });
+
+            const data = await res.json();
+            if (!res.ok) {
+                alert(data.error || "Error al guardar la nota");
+                return;
+            }
+
+            // limpiar form
+            setNoteText("");
+            setNoteChapter("");
+            setNoteQuote("");
+
+            // recargar notas
+            cargarNotas(bookId);
+        } catch (e) {
+            alert("Error al guardar la nota");
+        }
+    };
+
+
 
 
     // sección shelf con portadas
@@ -285,79 +507,7 @@ export default function App() {
         }
     };
 
-    const BookDetail = ({ book, onBack }) => (
-        <div style={{ padding: 16, maxWidth: 520, margin: "0 auto" }}>
-            <button onClick={onBack} style={{ marginBottom: 12 }}>
-                ← Volver
-            </button>
 
-            <div style={{ display: "flex", gap: 12 }}>
-                {/* portada */}
-                {book.cover?.url ? (
-                    <img
-                        src={book.cover.url}
-                        alt={book.title}
-                        style={{
-                            width: 120,
-                            height: 180,
-                            objectFit: "cover",
-                            borderRadius: 10,
-                            border: "1px solid #eee",
-                        }}
-                    />
-                ) : (
-                    <div
-                        style={{
-                            width: 120,
-                            height: 180,
-                            background: "#f0f0f0",
-                            borderRadius: 10,
-                            border: "1px solid #eee",
-                        }}
-                    />
-                )}
-
-                {/* info */}
-                <div style={{ flex: 1 }}>
-                    <h2 style={{ margin: 0 }}>{book.title}</h2>
-                    <p style={{ margin: "6px 0", opacity: 0.8 }}>{book.author}</p>
-
-                    <div style={{ marginTop: 10 }}>
-                        <div style={{ fontSize: 12, opacity: 0.7, marginBottom: 6 }}>
-                            Estado
-                        </div>
-
-                        {/* Reutilizamos tu PATCH */}
-                        <select
-                            value={book.status || "to_read"}
-                            onChange={(e) => cambiarEstado(book.id, e.target.value)}
-                            style={{ padding: 8, width: "100%" }}
-                        >
-                            <option value="to_read">Want to read</option>
-                            <option value="reading">Currently reading</option>
-                            <option value="paused">Interrupted</option>
-                            <option value="finished">Finished</option>
-                        </select>
-
-                        <button
-                            onClick={() => borrarLibro(book.id)}
-                            style={{ marginTop: 10, width: "100%" }}
-                        >
-                            🗑️ Borrar libro
-                        </button>
-                    </div>
-                </div>
-            </div>
-
-            <hr style={{ margin: "16px 0" }} />
-
-            {/* placeholder del diario -->lo implementaré después */}
-            <h3>Diary</h3>
-            <p style={{ opacity: 0.7 }}>
-                Aquí irán tus notas (diario de lectura).
-            </p>
-        </div>
-    );
 
     useEffect(() => {
         // escuchamos los cambios de sesión (se ejecuta cada vez que se inicia o cierra sesión)
@@ -373,6 +523,20 @@ export default function App() {
         if (user) listarLibros();
     }, [user]);
 
+    useEffect(() => {
+        if (selectedBook) {
+            // cuando se abre el detalle de un libro → cargar sus notas
+            cargarNotas(selectedBook.id);
+        } else {
+            // cuando se vuelve atrás → limpiar estado de notas
+            setNotes([]);
+            setNoteText("");
+            setNoteChapter("");
+            setNoteQuote("");
+        }
+    }, [selectedBook]);
+
+
 
     if (loading) return <p>Cargando...</p>; // si aun comprobando sesión
     if (!user) return <AuthPage />; // no usuario logueado
@@ -382,6 +546,17 @@ export default function App() {
             <BookDetail
                 book={selectedBook}
                 onBack={() => setSelectedBook(null)}
+                cambiarEstado={cambiarEstado}
+                borrarLibro={borrarLibro}
+                notes={notes}
+                notesLoading={notesLoading}
+                noteText={noteText}
+                setNoteText={setNoteText}
+                noteChapter={noteChapter}
+                setNoteChapter={setNoteChapter}
+                noteQuote={noteQuote}
+                setNoteQuote={setNoteQuote}
+                crearNota={crearNota}
             />
         );
     }
