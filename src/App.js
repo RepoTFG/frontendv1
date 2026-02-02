@@ -15,6 +15,7 @@ export default function App() {
     const [query, setQuery] = useState("");        // texto que escribe el usuario
     const [results, setResults] = useState([]);    // resultados de la búsqueda
     const [searching, setSearching] = useState(false); // para mostrar “buscando...”
+    const [selectedBook, setSelectedBook] = useState(null); // libro seleccionado (vista detalle)
 
     // probar /api/me (manda token al backend)
     const probarMe = async () => {
@@ -93,8 +94,12 @@ export default function App() {
             },
             body: JSON.stringify({ status }),
         });
-        listarLibros(); // refrescamos biblioteca
+
+        // actualiza el libro seleccionado si coincide
+        setSelectedBook((prev) => (prev && prev.id === id ? { ...prev, status } : prev));
+        listarLibros();
     };
+
 
     // borrar un libro (DELETE /api/books/:id)
     const borrarLibro = async (id) => {
@@ -117,7 +122,7 @@ export default function App() {
                 alert(data.error || "Error al borrar el libro");
                 return;
             }
-
+            setSelectedBook((prev) => (prev && prev.id === id ? null : prev));
             listarLibros(); // refrescar biblioteca
         } catch (e) {
             alert("Error al borrar el libro");
@@ -149,23 +154,27 @@ export default function App() {
                                 <img
                                     src={book.cover.url} // url guardada en firestore
                                     alt={book.title}
+                                    onClick={() => setSelectedBook(book)} // libro selaccionado -> abrir detalle
                                     style={{
                                         width: "100%",
                                         aspectRatio: "2 / 3",
                                         objectFit: "cover",
                                         borderRadius: 10,
                                         border: "1px solid #eee",
+                                        cursor: "pointer",
                                     }}
                                 />
                             ) : (
                                 // placeholder cuando no portada
                                 <div
+                                    onClick={() => setSelectedBook(book)}
                                     style={{
                                         width: "100%",
                                         aspectRatio: "2 / 3",
                                         background: "#f0f0f0",
                                         borderRadius: 10,
                                         border: "1px solid #eee",
+                                        cursor: "pointer",
                                     }}
                                 />
                             )}
@@ -276,6 +285,80 @@ export default function App() {
         }
     };
 
+    const BookDetail = ({ book, onBack }) => (
+        <div style={{ padding: 16, maxWidth: 520, margin: "0 auto" }}>
+            <button onClick={onBack} style={{ marginBottom: 12 }}>
+                ← Volver
+            </button>
+
+            <div style={{ display: "flex", gap: 12 }}>
+                {/* portada */}
+                {book.cover?.url ? (
+                    <img
+                        src={book.cover.url}
+                        alt={book.title}
+                        style={{
+                            width: 120,
+                            height: 180,
+                            objectFit: "cover",
+                            borderRadius: 10,
+                            border: "1px solid #eee",
+                        }}
+                    />
+                ) : (
+                    <div
+                        style={{
+                            width: 120,
+                            height: 180,
+                            background: "#f0f0f0",
+                            borderRadius: 10,
+                            border: "1px solid #eee",
+                        }}
+                    />
+                )}
+
+                {/* info */}
+                <div style={{ flex: 1 }}>
+                    <h2 style={{ margin: 0 }}>{book.title}</h2>
+                    <p style={{ margin: "6px 0", opacity: 0.8 }}>{book.author}</p>
+
+                    <div style={{ marginTop: 10 }}>
+                        <div style={{ fontSize: 12, opacity: 0.7, marginBottom: 6 }}>
+                            Estado
+                        </div>
+
+                        {/* Reutilizamos tu PATCH */}
+                        <select
+                            value={book.status || "to_read"}
+                            onChange={(e) => cambiarEstado(book.id, e.target.value)}
+                            style={{ padding: 8, width: "100%" }}
+                        >
+                            <option value="to_read">Want to read</option>
+                            <option value="reading">Currently reading</option>
+                            <option value="paused">Interrupted</option>
+                            <option value="finished">Finished</option>
+                        </select>
+
+                        <button
+                            onClick={() => borrarLibro(book.id)}
+                            style={{ marginTop: 10, width: "100%" }}
+                        >
+                            🗑️ Borrar libro
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <hr style={{ margin: "16px 0" }} />
+
+            {/* placeholder del diario -->lo implementaré después */}
+            <h3>Diary</h3>
+            <p style={{ opacity: 0.7 }}>
+                Aquí irán tus notas (diario de lectura).
+            </p>
+        </div>
+    );
+
     useEffect(() => {
         // escuchamos los cambios de sesión (se ejecuta cada vez que se inicia o cierra sesión)
         const unsub = onAuthStateChanged(auth, (u) => {
@@ -294,6 +377,14 @@ export default function App() {
     if (loading) return <p>Cargando...</p>; // si aun comprobando sesión
     if (!user) return <AuthPage />; // no usuario logueado
     // si hay usuario logueado --> página
+    if (selectedBook) {
+        return (
+            <BookDetail
+                book={selectedBook}
+                onBack={() => setSelectedBook(null)}
+            />
+        );
+    }
     return (
 
         <div>
