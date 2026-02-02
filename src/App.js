@@ -31,30 +31,6 @@ export default function App() {
             alert("Error al comprobar el usuario");
         }
     };
-    // crear libro de prueba (POST /api/books)
-    const crearLibroDemo = async () => {
-        try {
-            const token = await auth.currentUser.getIdToken();
-
-            const res = await fetch(`${process.env.REACT_APP_API_URL}/api/books`, {
-                method: "POST", // crear nuevo libro
-                headers: {
-                    "Content-Type": "application/json",
-                    Authorization: `Bearer ${token}`, // autenticación
-                },
-                body: JSON.stringify({
-                    title: "Libro de prueba",
-                    author: "Autor X",
-                    status: "to_read", // por defecto -> want to read
-                }),
-            });
-
-            const data = await res.json();
-            alert(`Libro creado con id: ${data.id}`);
-        } catch (e) {
-            alert("Error al crear el libro");
-        }
-    };
 
     // listar libros (GET /api/books)
     const listarLibros = async () => {
@@ -102,12 +78,51 @@ export default function App() {
         }
     };
     // separar libros por "shelves" (status)
-    //const wantToRead = books.filter((b) => b.status === "to_read");
-    //const currentlyReading = books.filter((b) => b.status === "reading");
-    //const interrupted = books.filter((b) => b.status === "paused");
     const wantToRead = (Array.isArray(books) ? books : []).filter((b) => b.status === "to_read");
     const currentlyReading = (Array.isArray(books) ? books : []).filter((b) => b.status === "reading");
     const interrupted = (Array.isArray(books) ? books : []).filter((b) => b.status === "paused");
+
+    // cambiar estado libro (PATCH /api/books/:id)
+    const cambiarEstado = async (id, status) => {
+        const token = await auth.currentUser.getIdToken();
+        await fetch(`${process.env.REACT_APP_API_URL}/api/books/${id}`, {
+            method: "PATCH",
+            headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify({ status }),
+        });
+        listarLibros(); // refrescamos biblioteca
+    };
+
+    // borrar un libro (DELETE /api/books/:id)
+    const borrarLibro = async (id) => {
+        // confirmación para no borrar sin querer
+        const ok = window.confirm("¿Seguro que quieres borrar este libro?");
+        if (!ok) return;
+
+        try {
+            const token = await auth.currentUser.getIdToken();
+
+            const res = await fetch(`${process.env.REACT_APP_API_URL}/api/books/${id}`, {
+                method: "DELETE",
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                },
+            });
+
+            const data = await res.json();
+            if (!res.ok) {
+                alert(data.error || "Error al borrar el libro");
+                return;
+            }
+
+            listarLibros(); // refrescar biblioteca
+        } catch (e) {
+            alert("Error al borrar el libro");
+        }
+    };
 
 
     // sección shelf con portadas
@@ -128,7 +143,7 @@ export default function App() {
                     }}
                 >
                     {items.map((book) => (
-                        <div key={book.id} style={{ textAlign: "center" }}>
+                        <div key={book.id} style={{ textAlign: "center", width: 130,margin: "0 auto", overflow: "visible", }}>
                             {/* si hay portada mostramos img --> si no, placeholder */}
                             {book.cover?.url ? (
                                 <img
@@ -177,6 +192,37 @@ export default function App() {
                                     {book.author}
                                 </div>
                             </div>
+                            <div style={{ marginTop: 6, display: "flex", flexDirection:"column", justifyContent: "center" }}>
+                                {/* selector de estado */}
+                                {/* flexDirection: "column" --> uno debajo del otro */}
+                                <select
+                                    value={book.status || "to_read"}
+                                    onChange={(e) => cambiarEstado(book.id, e.target.value)}
+                                    style={{ fontSize: 12, padding: 6, width: "100%", minWidth: 130, boxSizing: "border-box"}}
+                                >
+                                    <option value="to_read">Want to read</option>
+                                    <option value="reading">Currently reading</option>
+                                    <option value="paused">Interrupted</option>
+                                    <option value="finished">Finished</option>
+                                </select>
+
+                                {/* botón borrar */}
+                                <button
+                                    onClick={() => borrarLibro(book.id)}
+                                    style={{
+                                        fontSize: 12,
+                                        padding: "4px 6px",
+                                        borderRadius: 6,
+                                        border: "1px solid #ddd",
+                                        background: "white",
+                                        cursor: "pointer",
+                                    }}
+                                    title="Borrar libro"
+                                >
+                                    🗑️
+                                </button>
+                            </div>
+
                         </div>
                     ))}
                 </div>
@@ -234,7 +280,7 @@ export default function App() {
         // escuchamos los cambios de sesión (se ejecuta cada vez que se inicia o cierra sesión)
         const unsub = onAuthStateChanged(auth, (u) => {
             setUser(u); // guardamos usuario
-            setLoading(false); // ya hemos terminado de comprobar sesuón
+            setLoading(false); // ya hemos terminado de comprobar sesión
         });
         return () => unsub();
     }, []);
@@ -255,7 +301,6 @@ export default function App() {
             <h1>ReadRoom</h1>
             <p>Sesión iniciada: {user.email}</p> {/* luego cambiar por nickname o algo así */}
             <button onClick={probarMe}>Probar /api/me</button>
-            <button onClick={crearLibroDemo}>Crear libro demo</button>
             <button onClick={listarLibros}>Listar mis libros</button>
             <hr />
 
