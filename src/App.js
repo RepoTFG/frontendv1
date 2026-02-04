@@ -13,6 +13,8 @@ function BookDetail({
                         book,
                         onBack,
                         cambiarEstado,
+                        cambiarShelf,
+                        customShelves,
                         borrarLibro,
                         notes,
                         notesLoading,
@@ -49,6 +51,7 @@ function BookDetail({
                         setReviewIsPublic,
                         setReviewIsAnonymous,
                         myReview,
+                        toggleBookShelf,
                     }) {
     return (
         <div style={{ padding: 16, maxWidth: 520, margin: "0 auto" }}>
@@ -94,15 +97,54 @@ function BookDetail({
 
                         {/* reutilizamos PATCH */}
                         <select
-                            value={book.status || "to_read"}
-                            onChange={(e) => cambiarEstado(book.id, e.target.value)}
+                            value={`status:${book.status || "to_read"}`}
+                            onChange={(e) => {
+                                const v = e.target.value;
+                                if (v.startsWith("status:")) {
+                                    const status = v.replace("status:", "");
+                                    cambiarEstado(book.id, status);
+                                }
+                            }}
                             style={{ padding: 8, width: "100%" }}
                         >
-                            <option value="to_read">Want to read</option>
-                            <option value="reading">Currently reading</option>
-                            <option value="paused">Interrupted</option>
-                            <option value="finished">Finished</option>
+                            {/* status (ya definidos) */}
+                            <option value="status:to_read">Want to read</option>
+                            <option value="status:reading">Currently reading</option>
+                            <option value="status:paused">Interrupted</option>
+                            <option value="status:finished">Finished</option>
                         </select>
+
+                        {customShelves.length > 0 && (
+                            <div style={{ marginTop: 10 }}>
+                                <div style={{ fontSize: 12, opacity: 0.7, marginBottom: 6 }}>
+                                    Añadir también a...
+                                </div>
+
+                                <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                                    {customShelves.map((s) => {
+                                        const active = Array.isArray(book.shelves) && book.shelves.includes(s);
+                                        return (
+                                            <button
+                                                key={s}
+                                                onClick={() => toggleBookShelf(book.id, s)}
+                                                style={{
+                                                    padding: "6px 10px",
+                                                    borderRadius: 999,
+                                                    border: "1px solid #ddd",
+                                                    background: active ? "#f3f3f3" : "white",
+                                                    fontWeight: active ? 700 : 400,
+                                                    cursor: "pointer",
+                                                }}
+                                                type="button"
+                                                title={active ? "Quitar de esta shelf" : "Añadir a esta shelf"}
+                                            >
+                                                {s}
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                        )}
 
                         <button
                             onClick={() => borrarLibro(book.id)}
@@ -428,6 +470,12 @@ export default function App() {
     const [results, setResults] = useState([]);// resultados de la búsqueda
     const [searching, setSearching] = useState(false); // para mostrar “buscando...”
     const [selectedBook, setSelectedBook] = useState(null); // libro seleccionado (vista detalle)
+    // shelves personalizadas
+    const [customShelves, setCustomShelves] = useState([]);
+    const [newShelfName, setNewShelfName] = useState("");
+    const [addShelfChoice, setAddShelfChoice] = useState("");
+    const [addStatusByKey, setAddStatusByKey] = useState({});
+
     // estados para notas
     const [notes, setNotes] = useState([]); // notas del libro seleccionado
     const [noteText, setNoteText] = useState("");  // texto de la nota
@@ -516,6 +564,13 @@ export default function App() {
     const wantToRead = (Array.isArray(books) ? books : []).filter((b) => b.status === "to_read");
     const currentlyReading = (Array.isArray(books) ? books : []).filter((b) => b.status === "reading");
     const interrupted = (Array.isArray(books) ? books : []).filter((b) => b.status === "paused");
+    const finished = (Array.isArray(books) ? books : []).filter((b) => b.status === "finished");
+    // shelf personalizada
+    const customSections = customShelves.map((name) => ({
+        name,
+        items: (Array.isArray(books) ? books : []).filter((b) => Array.isArray(b.shelves) && b.shelves.includes(name)),
+    }));
+
 
     // cambiar estado libro (PATCH /api/books/:id)
     const cambiarEstado = async (id, status) => {
@@ -533,7 +588,6 @@ export default function App() {
         setSelectedBook((prev) => (prev && prev.id === id ? { ...prev, status } : prev));
         listarLibros();
     };
-
 
     // borrar un libro (DELETE /api/books/:id)
     const borrarLibro = async (id) => {
@@ -795,6 +849,66 @@ export default function App() {
         }
     };
 
+    // shelves personalizadas
+    const listarShelves = async () => {
+        try {
+            const token = await auth.currentUser.getIdToken();
+            const res = await fetch(`${process.env.REACT_APP_API_URL}/api/shelves`, {
+                headers: { Authorization: `Bearer ${token}` },
+            });
+
+            const data = await res.json();
+            if (!res.ok) {
+                alert(data.error || "Error al listar shelves");
+                setCustomShelves([]);
+                return;
+            }
+
+            // guardamos solo los nombres
+            setCustomShelves(Array.isArray(data) ? data.map((s) => s.name) : []);
+        } catch (e) {
+            alert("Error al listar shelves");
+        }
+    };
+
+    const cambiarShelf = async (id, shelf) => {
+        const token = await auth.currentUser.getIdToken();
+        await fetch(`${process.env.REACT_APP_API_URL}/api/books/${id}`, {
+            method: "PATCH",
+            headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify({ shelf }),
+        });
+
+        // si elijo shelf, quito status --> por ello, lo dejo en to_read para no romper nada
+        setSelectedBook((prev) => (prev && prev.id === id ? { ...prev, shelf } : prev));
+        listarLibros();
+    };
+
+    const toggleBookShelf = async (bookId, shelfName) => {
+        const token = await auth.currentUser.getIdToken();
+        const res = await fetch(`${process.env.REACT_APP_API_URL}/api/books/${bookId}/shelves/toggle`, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify({ shelf: shelfName }),
+        });
+
+        const data = await res.json().catch(() => null);
+
+        // refrescar
+        if (res.ok && data && data.id) {
+            setSelectedBook((prev) => (prev && prev.id === bookId ? { ...prev, ...data } : prev));
+        }
+        listarLibros();
+    };
+
+
+
     // sección shelf con portadas
     const Section = ({ title, items }) => (
         <div>
@@ -808,11 +922,13 @@ export default function App() {
                 <div
                     style={{
                         display: "grid",
-                        gridTemplateColumns: "repeat(auto-fill, minmax(90px, 1fr))",
-                        gap: 12,
+                        gridTemplateColumns: "repeat(auto-fill, 130px)",
+                        gap: 20,
+                        justifyContent: "start",
                     }}
                 >
-                    {items.map((book) => (
+
+                {items.map((book) => (
                         <div key={book.id} style={{ textAlign: "center", width: 130,margin: "0 auto", overflow: "visible", }}>
                             {/* si hay portada mostramos img --> si no, placeholder */}
                             {book.cover?.url ? (
@@ -870,15 +986,48 @@ export default function App() {
                                 {/* selector de estado */}
                                 {/* flexDirection: "column" --> uno debajo del otro */}
                                 <select
-                                    value={book.status || "to_read"}
-                                    onChange={(e) => cambiarEstado(book.id, e.target.value)}
-                                    style={{ fontSize: 12, padding: 6, width: "100%", minWidth: 130, boxSizing: "border-box"}}
+                                    value={`status:${book.status || "to_read"}`}
+                                    onChange={(e) => {
+                                        const v = e.target.value;
+                                        if (v.startsWith("status:")) {
+                                            const status = v.replace("status:", "");
+                                            cambiarEstado(book.id, status);
+                                        }
+                                    }}
+                                    style={{ fontSize: 12, padding: 6, width: "100%", minWidth: 130, boxSizing: "border-box" }}
                                 >
-                                    <option value="to_read">Want to read</option>
-                                    <option value="reading">Currently reading</option>
-                                    <option value="paused">Interrupted</option>
-                                    <option value="finished">Finished</option>
+                                    {/* status (ya definidos) */}
+                                    <option value="status:to_read">Want to read</option>
+                                    <option value="status:reading">Currently reading</option>
+                                    <option value="status:paused">Interrupted</option>
+                                    <option value="status:finished">Finished</option>
                                 </select>
+
+                                {customShelves.length > 0 && (
+                                    <div style={{ marginTop: 6, display: "flex", flexWrap: "wrap", gap: 6, justifyContent: "center" }}>
+                                        {customShelves.map((s) => {
+                                            const active = Array.isArray(book.shelves) && book.shelves.includes(s);
+                                            return (
+                                                <button
+                                                    key={s}
+                                                    onClick={() => toggleBookShelf(book.id, s)}
+                                                    style={{
+                                                        fontSize: 11,
+                                                        padding: "4px 8px",
+                                                        borderRadius: 999,
+                                                        border: "1px solid #ddd",
+                                                        background: active ? "#f3f3f3" : "white",
+                                                        fontWeight: active ? 700 : 400,
+                                                        cursor: "pointer",
+                                                    }}
+                                                    title={active ? "Quitar de esta shelf" : "Añadir a esta shelf"}
+                                                >
+                                                    {s}
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+                                )}
 
                                 {/* botón borrar */}
                                 <button
@@ -890,6 +1039,7 @@ export default function App() {
                                         border: "1px solid #ddd",
                                         background: "white",
                                         cursor: "pointer",
+                                        marginTop: 6,
                                     }}
                                     title="Borrar libro"
                                 >
@@ -905,7 +1055,7 @@ export default function App() {
     );
 
     // añadir resultado de búsqueda eligiendo en que shelf colocar
-    const addFromResult = async (doc, status) => {
+    const addFromResult = async (doc, { status, shelves } = {}) => {
         try {
             const token = await auth.currentUser.getIdToken();
 
@@ -915,7 +1065,10 @@ export default function App() {
             const coverUrl = doc.cover_i
                 ? `https://covers.openlibrary.org/b/id/${doc.cover_i}-L.jpg`
                 : "";
-            // enviamos el libro al backend para guardar en Firestore
+
+            // si se elige shelf personalizada y NO viene status, ponemos uno por defecto
+            const finalStatus = status || "to_read";
+
             const res = await fetch(`${process.env.REACT_APP_API_URL}/api/books`, {
                 method: "POST",
                 headers: {
@@ -925,9 +1078,10 @@ export default function App() {
                 body: JSON.stringify({
                     title,
                     author,
-                    status, // elegido (to_read/reading/paused)
-                    tags: ["biblioteca"], // para luego estanterías personalizadas
-                    genres: doc.subject ? doc.subject.slice(0, 3) : [], // limitar a 3 géneros
+                    status: finalStatus,
+                    shelves: Array.isArray(shelves) ? shelves : [],
+                    tags: ["biblioteca"],
+                    genres: doc.subject ? doc.subject.slice(0, 3) : [],
                     cover: {
                         source: "openlibrary",
                         url: coverUrl,
@@ -937,18 +1091,17 @@ export default function App() {
             });
 
             const data = await res.json();
-            // si hay error backend
             if (!res.ok) {
                 alert(data.error || "Error al añadir libro");
                 return;
             }
 
-            alert(`Añadido (id: ${data.id})`); // luego lo quitaré
-            listarLibros(); // recargar biblioteca
+            listarLibros();
         } catch (e) {
             alert("Error al añadir el libro");
         }
     };
+
 
     useEffect(() => {
         // escuchamos los cambios de sesión (se ejecuta cada vez que se inicia o cierra sesión)
@@ -961,7 +1114,10 @@ export default function App() {
 
     useEffect(() => {
         // cuando ya hay usuario, cargamos libros automáticamente
-        if (user) listarLibros();
+        if (user) {
+            listarLibros();
+            listarShelves(); // ahora también shelves personalizadas
+        }
     }, [user]);
 
     useEffect(() => {
@@ -997,6 +1153,8 @@ export default function App() {
                     cancelarEditarNota();
                 }}
                 cambiarEstado={cambiarEstado}
+                cambiarShelf={cambiarShelf}
+                customShelves={customShelves}
                 borrarLibro={borrarLibro}
                 notes={notes}
                 notesLoading={notesLoading}
@@ -1033,6 +1191,7 @@ export default function App() {
                 cargarReview={cargarReview}
                 myReview={myReview}
                 reviewLoading={reviewLoading}
+                toggleBookShelf={toggleBookShelf}
             />
         );
     }
@@ -1070,6 +1229,7 @@ export default function App() {
                             : null;
 
                         const author = (doc.author_name && doc.author_name[0]) ? doc.author_name[0] : "Autor desconocido";
+                        const currentStatus = addStatusByKey[doc.key] || "to_read";
 
                         return (
                             <li key={doc.key} style={{ display: "flex", gap: 12, padding: 8, borderBottom: "1px solid #ddd" }}>
@@ -1087,26 +1247,75 @@ export default function App() {
                                 <div style={{ flex: 1 }}>
                                     <div><strong>{doc.title}</strong></div>
                                     <div style={{ opacity: 0.8 }}>{author}</div>
+
                                     {/* selector --> elegir shelf donde añadir el libro */}
-                                    <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                                    <div style={{ display: "flex", gap: 8, alignItems: "center", marginTop: 6 }}>
                                         <span style={{ fontWeight: 600 }}>Add</span>
 
                                         <select
-                                            defaultValue=""
+                                            value={addShelfChoice}
                                             onChange={(e) => {
-                                                const status = e.target.value; // shelf elegida
-                                                if (!status) return;
-                                                addFromResult(doc, status); // añadimos libro
-                                                e.target.value = ""; // vuelve a "Add" después de añadir
+                                                const v = e.target.value;
+                                                setAddShelfChoice(v);
+
+                                                if (!v) return;
+
+                                                if (v.startsWith("status:")) {
+                                                    const status = v.replace("status:", "");
+                                                    setAddStatusByKey((prev) => ({ ...prev, [doc.key]: status }));
+                                                }
+
+                                                // reset UI
+                                                setAddShelfChoice("");
                                             }}
                                             style={{ padding: 6 }}
                                         >
-                                            <option value="">Choose shelf…</option>
-                                            <option value="to_read">Want to read</option>
-                                            <option value="reading">Currently reading</option>
-                                            <option value="paused">Interrupted</option>
+                                            <option value="">Choose status…</option>
+
+                                            {/* status (ya definidos) */}
+                                            <option value="status:to_read">Want to read</option>
+                                            <option value="status:reading">Currently reading</option>
+                                            <option value="status:paused">Interrupted</option>
+                                            <option value="status:finished">Finished</option>
                                         </select>
+
+                                        <button
+                                            onClick={() => addFromResult(doc, { status: currentStatus })}
+                                            style={{ padding: "6px 10px" }}
+                                            type="button"
+                                        >
+                                            Add
+                                        </button>
                                     </div>
+
+                                    {customShelves.length > 0 && (
+                                        <div style={{ marginTop: 8 }}>
+                                            <div style={{ fontSize: 12, opacity: 0.7, marginBottom: 6 }}>
+                                                Añadir también a...
+                                            </div>
+
+                                            <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                                                {customShelves.map((s) => (
+                                                    <button
+                                                        key={s}
+                                                        onClick={() => addFromResult(doc, { status: currentStatus, shelves: [s] })}
+                                                        style={{
+                                                            fontSize: 12,
+                                                            padding: "6px 10px",
+                                                            borderRadius: 999,
+                                                            border: "1px solid #ddd",
+                                                            background: "white",
+                                                            cursor: "pointer",
+                                                        }}
+                                                        type="button"
+                                                        title={`Añadir a ${s} manteniendo el status seleccionado`}
+                                                    >
+                                                        {s}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
                             </li>
                         );
@@ -1119,8 +1328,107 @@ export default function App() {
             <Section title="Currently reading" items={currentlyReading} />
             <Section title="Want to read" items={wantToRead} />
             <Section title="Interrupted" items={interrupted} />
+            <Section title="Finished" items={finished} />
+            {customSections.map((sec) => (
+                <Section key={sec.name} title={sec.name} items={sec.items} />
+            ))}
 
             <hr />
+            <h3>Custom shelves</h3>
+
+
+            <div
+                style={{
+                    border: "1px solid #eee",
+                    borderRadius: 14,
+                    padding: 12,
+                    background: "#fafafa",
+                    maxWidth: 520,
+                }}
+            >
+                <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                    <input
+                        value={newShelfName}
+                        onChange={(e) => setNewShelfName(e.target.value)}
+                        placeholder="Nombre de la shelf"
+                        style={{
+                            padding: 10,
+                            flex: 1,
+                            borderRadius: 12,
+                            border: "1px solid #ddd",
+                            outline: "none",
+                        }}
+                    />
+
+                    <button
+                        onClick={async () => {
+                            const name = newShelfName.trim();
+                            if (!name) return;
+
+                            try {
+                                const token = await auth.currentUser.getIdToken();
+                                const res = await fetch(`${process.env.REACT_APP_API_URL}/api/shelves`, {
+                                    method: "POST",
+                                    headers: {
+                                        "Content-Type": "application/json",
+                                        Authorization: `Bearer ${token}`,
+                                    },
+                                    body: JSON.stringify({ name }),
+                                });
+
+                                const data = await res.json();
+                                if (!res.ok) {
+                                    alert(data.error || "Error al crear shelf");
+                                    return;
+                                }
+
+                                setNewShelfName("");
+                                listarShelves(); // refrescamos la lsita desde db
+                            } catch (e) {
+                                alert("Error al crear shelf");
+                            }
+                        }}
+                        style={{
+                            padding: "10px 12px",
+                            borderRadius: 12,
+                            border: "1px solid #ddd",
+                            background: "white",
+                            cursor: "pointer",
+                            whiteSpace: "nowrap",
+                        }}
+                        title="Crear shelf"
+                    >
+                        ➕ Crear
+                    </button>
+                </div>
+
+                <div style={{ marginTop: 10 }}>
+                    {customShelves.length === 0 ? (
+                        <div style={{ opacity: 0.7, fontSize: 13 }}>
+                            Aún no hay shelves personalizadas.
+                        </div>
+                    ) : (
+                        <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                            {customShelves.map((s) => (
+                                <div
+                                    key={s}
+                                    style={{
+                                        padding: "6px 10px",
+                                        borderRadius: 999,
+                                        border: "1px solid #e5e5e5",
+                                        background: "white",
+                                        fontSize: 13,
+                                    }}
+                                    title="Shelf personalizada"
+                                >
+                                    {s}
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </div>
+            </div>
+
             <button onClick={() => signOut(auth)}>Cerrar sesión</button>
         </div>
     );
