@@ -1,6 +1,6 @@
 // useEffect: ejecutar code auto
 // useState: guardar datos y actualizar estado
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 // Funciones firebase:
 // onAuthStateChanged: ver si hay un usuario logeado o no
 // signOut: cierra sesión usuario
@@ -53,414 +53,668 @@ function BookDetail({
                         myReview,
                         toggleBookShelf,
                     }) {
+    // definimos el estilo
+    // colores:
+    const ACCENT = "#2F2A24"; // color principal
+    const SOFT = "#F6F3EF"; // fondo suave
+    const CARD = "#FFFFFF";
+    const BORDER = "#E9E4DE";
+    const MUTED = "rgba(47,42,36,0.60)"; // texto secundario
+
+    const [openPanel, setOpenPanel] = useState("review"); // review, diary o null (ver que sección está abierta)
+
+    const inputStyle = {
+        padding: 12,
+        borderRadius: 14,
+        border: `1px solid ${BORDER}`,
+        background: SOFT,
+        outline: "none", // quitamos focus azul
+        width: "100%",
+        boxSizing: "border-box",
+        fontSize: 14,
+    };
+    // acción principal pantalla (guardar reseña, nota, buscar...)
+    const primaryBtn = {
+        padding: "12px 14px",
+        borderRadius: 14,
+        border: `1px solid ${ACCENT}`,
+        background: ACCENT,
+        color: "white",
+        cursor: "pointer",
+        width: "100%",
+        fontWeight: 700,
+    };
+    // acciones secundarias (como ver reseñas, regargar, cancelar...)
+    const ghostBtn = {
+        padding: "12px 14px",
+        borderRadius: 14,
+        border: `1px solid ${BORDER}`,
+        background: CARD,
+        color: ACCENT,
+        cursor: "pointer",
+        width: "100%",
+        fontWeight: 700,
+    };
+    // para estados (want to read, reading, finished...)
+    const pill = (active) => ({
+        padding: "8px 10px",
+        borderRadius: 999,
+        border: `1px solid ${active ? ACCENT : BORDER}`,
+        background: active ? ACCENT : CARD, // si está activo --> color principal
+        color: active ? "white" : ACCENT,
+        fontWeight: active ? 800 : 600,
+        cursor: "pointer",
+        fontSize: 12,
+        lineHeight: "16px",
+        whiteSpace: "nowrap",
+    });
+    // para encabezados de sección desplegables
+    // al pulsar libro --> sección review, diary (abrir panel +; cerrar: -)
+    const sectionHeader = (title, key) => (
+        <button
+            onClick={() => setOpenPanel((prev) => (prev === key ? null : key))}
+            style={{
+                width: "100%",
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                padding: "12px 12px",
+                borderRadius: 16,
+                border: `1px solid ${BORDER}`,
+                background: CARD,
+                cursor: "pointer",
+                fontWeight: 800,
+                color: ACCENT,
+            }}
+            type="button"
+        >
+
+            <span>{title}</span>
+            <span style={{ opacity: 0.7 }}>{openPanel === key ? "—" : "+"}</span>
+        </button>
+
+    );
+
     return (
-        <div style={{ padding: 16, maxWidth: 520, margin: "0 auto" }}>
-            <button onClick={onBack} style={{ marginBottom: 12 }}>
-                ← Volver
-            </button>
-
-            <div style={{ display: "flex", gap: 12 }}>
-                {/* portada */}
-                {book.cover?.url ? (
-                    <img
-                        src={book.cover.url}
-                        alt={book.title}
-                        style={{
-                            width: 120,
-                            height: 180,
-                            objectFit: "cover",
-                            borderRadius: 10,
-                            border: "1px solid #eee",
-                        }}
-                    />
-                ) : (
-                    <div
-                        style={{
-                            width: 120,
-                            height: 180,
-                            background: "#f0f0f0",
-                            borderRadius: 10,
-                            border: "1px solid #eee",
-                        }}
-                    />
-                )}
-
-                {/* info */}
-                <div style={{ flex: 1 }}>
-                    <h2 style={{ margin: 0 }}>{book.title}</h2>
-                    <p style={{ margin: "6px 0", opacity: 0.8 }}>{book.author}</p>
-
-                    <div style={{ marginTop: 10 }}>
-                        <div style={{ fontSize: 12, opacity: 0.7, marginBottom: 6 }}>
-                            Estado
-                        </div>
-
-                        {/* reutilizamos PATCH */}
-                        <select
-                            value={`status:${book.status || "to_read"}`}
-                            onChange={(e) => {
-                                const v = e.target.value;
-                                if (v.startsWith("status:")) {
-                                    const status = v.replace("status:", "");
-                                    cambiarEstado(book.id, status);
-                                }
+        <div style={{ background: "#FBFAF8", minHeight: "100vh" }}> {/* vh -> ocupa al menos toda la altura de la ventana */}
+            {/* header fijo */}
+            <div
+                style={{
+                    position: "sticky",
+                    top: 0,
+                    zIndex: 10, //por encima del contenido al hacer scroll
+                    background: "#FBFAF8",
+                    borderBottom: `1px solid ${BORDER}`,
+                }}
+            >
+                <div style={{ padding: 16, maxWidth: 520, margin: "0 auto" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                        <button
+                            onClick={onBack}
+                            style={{
+                                width: 40,
+                                height: 40,
+                                borderRadius: 999,
+                                border: `1px solid ${BORDER}`,
+                                background: CARD,
+                                cursor: "pointer",
+                                fontWeight: 900,
+                                color: ACCENT,
                             }}
-                            style={{ padding: 8, width: "100%" }}
+                            type="button"
+                            aria-label="Volver"
+                            title="Volver"
                         >
-                            {/* status (ya definidos) */}
-                            <option value="status:to_read">Want to read</option>
-                            <option value="status:reading">Currently reading</option>
-                            <option value="status:paused">Interrupted</option>
-                            <option value="status:finished">Finished</option>
-                        </select>
+                            ←
+                        </button>
 
-                        {customShelves.length > 0 && (
-                            <div style={{ marginTop: 10 }}>
-                                <div style={{ fontSize: 12, opacity: 0.7, marginBottom: 6 }}>
-                                    Añadir también a...
+                        <div style={{ display: "flex", alignItems: "center", gap: 12, flex: 1, minWidth: 0 }}>
+                            {/* hacemos la portada mini */}
+                            {book.cover?.url ? (
+                                <img
+                                    src={book.cover.url}
+                                    alt={book.title}
+                                    style={{
+                                        width: 44,
+                                        height: 66,
+                                        objectFit: "cover",
+                                        borderRadius: 10,
+                                        border: `1px solid ${BORDER}`,
+                                        flexShrink: 0, // para que no se comprima en pantallas pequeñas
+                                    }}
+                                />
+                                // cuando no hay imagen de portada:
+                            ) : (
+                                <div
+                                    style={{
+                                        width: 44,
+                                        height: 66,
+                                        background: SOFT,
+                                        borderRadius: 10,
+                                        border: `1px solid ${BORDER}`,
+                                        flexShrink: 0,
+                                    }}
+                                />
+                            )}
+
+                            <div style={{ minWidth: 0 }}>
+                                {/* contenedor titulo y autor */}
+                                <div
+                                    style={{
+                                        fontWeight: 900,
+                                        color: ACCENT,
+                                        overflow: "hidden",
+                                        textOverflow: "ellipsis", // recorte auto con ...
+                                        whiteSpace: "nowrap", // una sola linea
+                                    }}
+                                >
+                                    {book.title}
                                 </div>
-
-                                <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-                                    {customShelves.map((s) => {
-                                        const active = Array.isArray(book.shelves) && book.shelves.includes(s);
-                                        return (
-                                            <button
-                                                key={s}
-                                                onClick={() => toggleBookShelf(book.id, s)}
-                                                style={{
-                                                    padding: "6px 10px",
-                                                    borderRadius: 999,
-                                                    border: "1px solid #ddd",
-                                                    background: active ? "#f3f3f3" : "white",
-                                                    fontWeight: active ? 700 : 400,
-                                                    cursor: "pointer",
-                                                }}
-                                                type="button"
-                                                title={active ? "Quitar de esta shelf" : "Añadir a esta shelf"}
-                                            >
-                                                {s}
-                                            </button>
-                                        );
-                                    })}
+                                <div
+                                    style={{
+                                        marginTop: 2,
+                                        fontSize: 12,
+                                        color: MUTED,
+                                        overflow: "hidden",
+                                        textOverflow: "ellipsis",
+                                        whiteSpace: "nowrap",
+                                    }}
+                                >
+                                    {book.author}
                                 </div>
                             </div>
-                        )}
-
-                        <button
-                            onClick={() => borrarLibro(book.id)}
-                            style={{ marginTop: 10, width: "100%" }}
-                        >
-                            🗑️ Borrar libro
-                        </button>
+                        </div>
                     </div>
                 </div>
             </div>
 
-            <hr style={{ margin: "16px 0" }} />
-            <h3>Review</h3>
-
-            <div style={{ display: "grid", gap: 8, marginBottom: 12 }}>
-                <select
-                    value={reviewRating}
-                    onChange={(e) => setReviewRating(Number(e.target.value))}
-                    style={{ padding: 8 }}
+            <div style={{ padding: 16, maxWidth: 520, margin: "0 auto" }}>
+                {/* bloque info */}
+                <div
+                    style={{
+                        border: `1px solid ${BORDER}`,
+                        borderRadius: 18,
+                        background: CARD,
+                        padding: 14,
+                    }}
                 >
-                    <option value={5}>⭐⭐⭐⭐⭐ (5)</option>
-                    <option value={4}>⭐⭐⭐⭐ (4)</option>
-                    <option value={3}>⭐⭐⭐ (3)</option>
-                    <option value={2}>⭐⭐ (2)</option>
-                    <option value={1}>⭐ (1)</option>
-                </select>
-
-                <textarea
-                    placeholder="Escribe tu reseña del libro..."
-                    value={reviewText}
-                    onChange={(e) => setReviewText(e.target.value)}
-                    rows={4}
-                    style={{ padding: 8, resize: "vertical" }}
-                />
-
-                <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                    <div style={{ fontSize: 12, opacity: 0.75, minWidth: 120 }}>
-                        Modo:
-                    </div>
-
-                    <button
-                        onClick={() => {
-                            // modo privado
-                            // (no cambia tu reseña, solo el modo de guardado)
-                            setReviewIsPublic(false);
-                            setReviewIsAnonymous(true);
-                        }}
-                        style={{
-                            padding: "8px 10px",
-                            borderRadius: 10,
-                            border: "1px solid #ddd",
-                            background: reviewIsPublic ? "white" : "#f3f3f3",
-                            fontWeight: reviewIsPublic ? 400 : 700,
-                            cursor: "pointer",
-                        }}
-                        type="button"
-                    >
-                        Solo para mí
-                    </button>
-
-                    <button
-                        onClick={() => {
-                            // modo publico anonimo
-                            setReviewIsPublic(true);
-                            setReviewIsAnonymous(true);
-                        }}
-                        style={{
-                            padding: "8px 10px",
-                            borderRadius: 10,
-                            border: "1px solid #ddd",
-                            background: reviewIsPublic ? "#f3f3f3" : "white",
-                            fontWeight: reviewIsPublic ? 700 : 400,
-                            cursor: "pointer",
-                        }}
-                        type="button"
-                        title="Publica tu reseña sin mostrar tu identidad"
-                    >
-                        Publicar anónima
-                    </button>
-                </div>
-
-                <button
-                    onClick={() => guardarReview(book.id, { isPublic: reviewIsPublic, isAnonymous: true })}
-                    style={{ padding: 10 }}
-                    disabled={reviewLoading}
-                >
-                    {reviewLoading
-                        ? "Guardando..."
-                        : reviewIsPublic
-                            ? "Guardar y publicar anónimamente"
-                            : "Guardar reseña (privada)"}
-                </button>
-
-                <div style={{ fontSize: 12, opacity: 0.75 }}>
-                    Estado actual:{" "}
-                    <strong>{reviewIsPublic ? "Publicada (anónima)" : "Privada"}</strong>
-                </div>
-
-                {/* TU RESEÑA GUARDADA (solo tú) */}
-                {myReview && myReview.text ? (
-                    <div
-                        style={{
-                            border: "1px solid #eee",
-                            borderRadius: 12,
-                            padding: 12,
-                            background: "#fafafa",
-                            marginTop: 6,
-                        }}
-                    >
-                        <div style={{ display: "flex", justifyContent: "space-between", gap: 10 }}>
-                            <div style={{ fontWeight: 800 }}>Tu reseña guardada</div>
-                            <div style={{ fontSize: 12, opacity: 0.8 }}>
-                                ⭐ {myReview.rating || "?"}/5
-                            </div>
-                        </div>
-
-                        <div style={{ marginTop: 8, whiteSpace: "pre-wrap" }}>
-                            {myReview.text}
-                        </div>
-
-                        <div style={{ marginTop: 8, fontSize: 12, opacity: 0.75 }}>
-                            {myReview.isPublic ? "También está publicada (anónima)" : "No está publicada"}
-                        </div>
-
-                        {myReview.updatedAt && (
-                            <div style={{ marginTop: 6, fontSize: 11, opacity: 0.6 }}>
-                                Última actualización: {new Date(myReview.updatedAt).toLocaleString()}
-                            </div>
+                    <div style={{ display: "flex", gap: 14 }}>
+                        {/* portada a la izquierda */}
+                        {book.cover?.url ? (
+                            <img
+                                src={book.cover.url}
+                                alt={book.title}
+                                style={{
+                                    width: 96,
+                                    height: 144,
+                                    objectFit: "cover",
+                                    borderRadius: 14,
+                                    border: `1px solid ${BORDER}`,
+                                }}
+                            />
+                        ) : (
+                            <div
+                                style={{
+                                    width: 96,
+                                    height: 144,
+                                    background: SOFT,
+                                    borderRadius: 14,
+                                    border: `1px solid ${BORDER}`,
+                                }}
+                            />
                         )}
 
-                        <button
-                            onClick={() => cargarReview(book.id)}
-                            style={{ marginTop: 10, padding: "8px 10px", width: "100%" }}
-                            disabled={reviewLoading}
+                        {/* info a la derecha */}
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ fontSize: 12, color: MUTED, fontWeight: 800, marginBottom: 8 }}>
+                                Estado
+                            </div>
+
+                            {/* status en chips */}
+                            <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                                <button
+                                    type="button"
+                                    onClick={() => cambiarEstado(book.id, "to_read")}
+                                    style={pill((book.status || "to_read") === "to_read")}
+                                >
+                                    Want to read
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => cambiarEstado(book.id, "reading")}
+                                    style={pill(book.status === "reading")}
+                                >
+                                    Currently reading
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => cambiarEstado(book.id, "paused")}
+                                    style={pill(book.status === "paused")}
+                                >
+                                    Interrupted
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => cambiarEstado(book.id, "finished")}
+                                    style={pill(book.status === "finished")}
+                                >
+                                    Finished
+                                </button>
+                            </div>
+
+                            {customShelves.length > 0 && ( // estanterias personalizadas -> selección múltiple
+                                <div style={{ marginTop: 14 }}>
+                                    <div style={{ fontSize: 12, color: MUTED, fontWeight: 800, marginBottom: 8 }}>
+                                        Añadir también a...
+                                    </div>
+
+                                    <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                                        {customShelves.map((s) => {
+                                            // si el libro ya pertenece a esa estantería -> estado activo
+                                            const active = Array.isArray(book.shelves) && book.shelves.includes(s);
+                                            return (
+                                                <button
+                                                    key={s}
+                                                    onClick={() => toggleBookShelf(book.id, s)}
+                                                    style={{
+                                                        padding: "8px 10px",
+                                                        borderRadius: 999,
+                                                        border: `1px solid ${active ? ACCENT : BORDER}`,
+                                                        background: active ? SOFT : CARD,
+                                                        fontWeight: active ? 900 : 700,
+                                                        cursor: "pointer",
+                                                        color: ACCENT,
+                                                        fontSize: 12,
+                                                    }}
+                                                    type="button"
+                                                    title={active ? "Quitar de esta shelf" : "Añadir a esta shelf"} // para hover/lector pantalla
+                                                >
+                                                    {s}
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+                            )}
+
+                            <div style={{ marginTop: 14 }}>
+                                <button
+                                    onClick={() => borrarLibro(book.id)}
+                                    style={{
+                                        padding: "12px 14px",
+                                        borderRadius: 14,
+                                        border: `1px solid ${BORDER}`,
+                                        background: CARD,
+                                        cursor: "pointer",
+                                        width: "100%",
+                                        fontWeight: 900,
+                                        color: ACCENT,
+                                    }}
+                                    type="button"
+                                >
+                                    🗑️ Borrar libro
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {/* review --> sección desplegable */}
+                <div style={{ marginTop: 14 }}>
+                    {sectionHeader("Review", "review")}
+                    {openPanel === "review" && ( // controlamos si está abierto o no
+                        <div
+                            style={{
+                                marginTop: 10,
+                                border: `1px solid ${BORDER}`,
+                                borderRadius: 18,
+                                background: CARD,
+                                padding: 14,
+                            }}
                         >
-                            {reviewLoading ? "Cargando..." : "Recargar mi reseña"}
-                        </button>
-                    </div>
-                ) : (
-                    <div style={{ fontSize: 12, opacity: 0.75 }}>
-                        Todavía no has guardado una reseña privada para este libro.
-                    </div>
-                )}
+                            <div style={{ display: "grid", gap: 10 }}>
+                                <select
+                                    value={reviewRating} // gusrdamos el score
+                                    onChange={(e) => setReviewRating(Number(e.target.value))}
+                                    style={{
+                                        ...inputStyle,
+                                        background: SOFT,
+                                        appearance: "none",
+                                        WebkitAppearance: "none",
+                                    }}
+                                >
+                                    <option value={5}>⭐⭐⭐⭐⭐ (5)</option>
+                                    <option value={4}>⭐⭐⭐⭐ (4)</option>
+                                    <option value={3}>⭐⭐⭐ (3)</option>
+                                    <option value={2}>⭐⭐ (2)</option>
+                                    <option value={1}>⭐ (1)</option>
+                                </select>
 
-                <button onClick={() => cargarResenasPublicas(book.id)} style={{ padding: "8px 10px" }}>
-                    Ver reseñas anónimas de otros
-                </button>
+                                <textarea
+                                    placeholder="Escribe tu reseña del libro..."
+                                    value={reviewText}
+                                    onChange={(e) => setReviewText(e.target.value)}
+                                    rows={4}
+                                    style={{ ...inputStyle, resize: "vertical" }} // agrandamos solo en vertical
+                                />
 
-                {publicReviewsLoading ? (
-                    <p style={{ opacity: 0.7 }}>Cargando reseñas...</p>
-                ) : publicReviews.length === 0 ? (
-                    <p style={{ opacity: 0.7 }}>Todavía no hay reseñas públicas para este libro.</p>
-                ) : (
-                    <div style={{ display: "grid", gap: 10, marginTop: 10 }}>
-                        {publicReviews.map((r) => (
-                            <div
-                                key={r.id}
-                                style={{
-                                    border: "1px solid #eee",
-                                    borderRadius: 10,
-                                    padding: 10,
-                                    background: "white",
-                                }}
-                            >
-                                <div style={{ display: "flex", justifyContent: "space-between", gap: 10 }}>
-                                    <div style={{ fontWeight: 700 }}>{r.authorLabel || "Anónimo"}</div>
-                                    <div style={{ fontSize: 12, opacity: 0.8 }}>⭐ {r.rating || "?"}/5</div>
+                                <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+                                    <div style={{ fontSize: 12, color: MUTED, fontWeight: 800, minWidth: 120 }}>
+                                        Modo:
+                                    </div>
+
+                                    <button
+                                        onClick={() => {
+                                            // modo privado
+                                            // (no cambia tu reseña, solo el modo de guardado)
+                                            setReviewIsPublic(false);
+                                            setReviewIsAnonymous(true);
+                                        }}
+                                        // ahora tipo pill
+                                        style={{
+                                            ...pill(!reviewIsPublic),
+                                            border: `1px solid ${!reviewIsPublic ? ACCENT : BORDER}`,
+                                        }}
+                                        type="button"
+                                    >
+                                        Solo para mí
+                                    </button>
+
+                                    <button
+                                        onClick={() => {
+                                            // modo publico anonimo
+                                            setReviewIsPublic(true);
+                                            setReviewIsAnonymous(true);
+                                        }}
+                                        style={{
+                                            ...pill(!!reviewIsPublic),
+                                            border: `1px solid ${reviewIsPublic ? ACCENT : BORDER}`,
+                                        }}
+                                        type="button"
+                                        title="Publica tu reseña sin mostrar tu identidad"
+                                    >
+                                        Publicar anónima
+                                    </button>
                                 </div>
 
-                                <div style={{ marginTop: 8, whiteSpace: "pre-wrap" }}>{r.text}</div>
+                                <button
+                                    onClick={() => guardarReview(book.id, { isPublic: reviewIsPublic, isAnonymous: true })}
+                                    style={primaryBtn}
+                                    disabled={reviewLoading}
+                                    type="button"
+                                >
+                                    {reviewLoading
+                                        ? "Guardando..."
+                                        : reviewIsPublic
+                                            ? "Guardar y publicar anónimamente"
+                                            : "Guardar reseña (privada)"}
+                                </button>
 
-                                {r.createdAt && (
-                                    <div style={{ marginTop: 8, fontSize: 11, opacity: 0.6 }}>
-                                        {new Date(r.createdAt).toLocaleString()}
+                                <div style={{ fontSize: 12, color: MUTED }}>
+                                    Estado actual:{" "}
+                                    <strong style={{ color: ACCENT }}>
+                                        {reviewIsPublic ? "Publicada (anónima)" : "Privada"}
+                                    </strong>
+                                </div>
+
+                                {/* TU RESEÑA GUARDADA (solo tú) */}
+                                {myReview && myReview.text ? (
+                                    <div
+                                        style={{
+                                            border: `1px solid ${BORDER}`,
+                                            borderRadius: 16,
+                                            padding: 12,
+                                            background: SOFT,
+                                        }}
+                                    >
+                                        <div style={{ display: "flex", justifyContent: "space-between", gap: 10 }}>
+                                            <div style={{ fontWeight: 900, color: ACCENT }}>Tu reseña guardada</div>
+                                            <div style={{ fontSize: 12, color: MUTED }}>
+                                                ⭐ {myReview.rating || "?"}/5
+                                            </div>
+                                        </div>
+
+                                        <div style={{ marginTop: 8, whiteSpace: "pre-wrap", color: ACCENT }}>
+                                            {myReview.text}
+                                        </div>
+
+                                        <div style={{ marginTop: 8, fontSize: 12, color: MUTED }}>
+                                            {myReview.isPublic ? "También está publicada (anónima)" : "No está publicada"}
+                                        </div>
+
+                                        {myReview.updatedAt && (
+                                            <div style={{ marginTop: 6, fontSize: 11, color: MUTED }}>
+                                                Última actualización: {new Date(myReview.updatedAt).toLocaleString()}
+                                            </div>
+                                        )}
+
+                                        <button
+                                            onClick={() => cargarReview(book.id)}
+                                            style={{ ...ghostBtn, marginTop: 10 }}
+                                            disabled={reviewLoading}
+                                            type="button"
+                                        >
+                                            {reviewLoading ? "Cargando..." : "Recargar mi reseña"}
+                                        </button>
+                                    </div>
+                                ) : (
+                                    <div style={{ fontSize: 12, color: MUTED }}>
+                                        Todavía no has guardado una reseña privada para este libro.
+                                    </div>
+                                )}
+
+                                <button
+                                    onClick={() => cargarResenasPublicas(book.id)}
+                                    style={ghostBtn}
+                                    type="button"
+                                >
+                                    Ver reseñas anónimas de otros
+                                </button>
+
+                                {publicReviewsLoading ? (
+                                    <p style={{ opacity: 0.7, margin: 0 }}>Cargando reseñas...</p>
+                                ) : publicReviews.length === 0 ? ( // si no hay resultados
+                                    <p style={{ opacity: 0.7, margin: 0 }}>Todavía no hay reseñas públicas para este libro.</p>
+                                ) : (
+                                    <div style={{ display: "grid", gap: 10, marginTop: 4 }}>
+                                        {publicReviews.map((r) => (
+                                            <div
+                                                key={r.id}
+                                                style={{
+                                                    border: `1px solid ${BORDER}`,
+                                                    borderRadius: 16,
+                                                    padding: 12,
+                                                    background: CARD,
+                                                }}
+                                            >
+                                                <div style={{ display: "flex", justifyContent: "space-between", gap: 10 }}>
+                                                    <div style={{ fontWeight: 900, color: ACCENT }}>{r.authorLabel || "Anónimo"}</div>
+                                                    <div style={{ fontSize: 12, color: MUTED }}>⭐ {r.rating || "?"}/5</div>
+                                                </div>
+
+                                                <div style={{ marginTop: 8, whiteSpace: "pre-wrap", color: ACCENT }}>{r.text}</div>
+
+                                                {r.createdAt && (
+                                                    <div style={{ marginTop: 8, fontSize: 11, color: MUTED }}>
+                                                        {new Date(r.createdAt).toLocaleString()}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        ))}
                                     </div>
                                 )}
                             </div>
-                        ))}
-                    </div>
-                )}
-            </div>
-
-            <hr style={{ margin: "16px 0" }} />
-            <h3>Diary</h3>
-            <hr style={{ margin: "16px 0" }} />
-
-            <div style={{ display: "grid", gap: 8, marginBottom: 12 }}>
-                <input
-                    placeholder="Capítulo / parte (opcional)"
-                    value={noteChapter}
-                    onChange={(e) => setNoteChapter(e.target.value)}
-                    style={{ padding: 8 }}
-                />
-
-                <textarea
-                    placeholder="Escribe tu nota..."
-                    value={noteText}
-                    onChange={(e) => setNoteText(e.target.value)}
-                    rows={4}
-                    style={{ padding: 8, resize: "vertical" }}
-                />
-
-                <input
-                    placeholder="Frase destacada (opcional)"
-                    value={noteQuote}
-                    onChange={(e) => setNoteQuote(e.target.value)}
-                    style={{ padding: 8 }}
-                />
-
-                <button onClick={() => crearNota(book.id)} style={{ padding: 10 }}>
-                    Guardar nota
-                </button>
-            </div>
-
-            {notesLoading ? (
-                <p style={{ opacity: 0.7 }}>Cargando notas...</p>
-            ) : notes.length === 0 ? (
-                <p style={{ opacity: 0.7 }}>Todavía no hay notas para este libro.</p>
-            ) : (
-                <div style={{ display: "grid", gap: 10 }}>
-                    {notes.map((n) => (
-                        <div
-                            key={n.id}
-                            style={{
-                                border: "1px solid #eee",
-                                borderRadius: 10,
-                                padding: 10,
-                                background: "white",
-                            }}
-                        >
-                            {editingNoteId === n.id ? (
-                                <div style={{ display: "grid", gap: 8 }}>
-                                    <input
-                                        value={editChapter}
-                                        onChange={(e) => setEditChapter(e.target.value)}
-                                        placeholder="Capítulo / parte (opcional)"
-                                        style={{ padding: 8 }}
-                                    />
-
-                                    <textarea
-                                        value={editText}
-                                        onChange={(e) => setEditText(e.target.value)}
-                                        rows={4}
-                                        style={{ padding: 8, resize: "vertical" }}
-                                    />
-
-                                    <input
-                                        value={editQuote}
-                                        onChange={(e) => setEditQuote(e.target.value)}
-                                        placeholder="Frase destacada (opcional)"
-                                        style={{ padding: 8 }}
-                                    />
-
-                                    <div style={{ display: "flex", gap: 8 }}>
-                                        <button
-                                            onClick={() => guardarEdicionNota(n.id)}
-                                            style={{ padding: "6px 10px" }}
-                                        >
-                                            ✅ Guardar
-                                        </button>
-                                        <button
-                                            onClick={cancelarEditarNota}
-                                            style={{ padding: "6px 10px" }}
-                                        >
-                                            ✖ Cancelar
-                                        </button>
-                                    </div>
-                                </div>
-                            ) : (
-                                <>
-                                    {n.chapter && (
-                                        <div style={{ fontSize: 12, opacity: 0.7, marginBottom: 6 }}>
-                                            {n.chapter}
-                                        </div>
-                                    )}
-
-                                    <div style={{ whiteSpace: "pre-wrap" }}>{n.text}</div>
-
-                                    {n.quote && (
-                                        <div style={{ marginTop: 8, fontStyle: "italic", opacity: 0.8 }}>
-                                            “{n.quote}”
-                                        </div>
-                                    )}
-
-                                    {n.createdAt && (
-                                        <div style={{ marginTop: 8, fontSize: 11, opacity: 0.6 }}>
-                                            {new Date(n.createdAt).toLocaleString()}
-                                        </div>
-                                    )}
-
-                                    <div style={{ marginTop: 8, display: "flex", gap: 8 }}>
-                                        <button
-                                            onClick={() => empezarEditarNota(n)}
-                                            style={{ padding: "6px 10px" }}
-                                        >
-                                            ✏️ Editar
-                                        </button>
-                                        <button
-                                            onClick={() => borrarNota(n.id)}
-                                            style={{ padding: "6px 10px" }}
-                                        >
-                                            🗑️ Borrar
-                                        </button>
-                                    </div>
-                                </>
-                            )}
                         </div>
-                    ))}
+                    )}
                 </div>
 
-            )}
+                {/* diary --> sección deplegable*/}
+                <div style={{ marginTop: 14 }}>
+                    {sectionHeader("Diary", "diary")}
+                    {openPanel === "diary" && (
+                        <div
+                            style={{
+                                marginTop: 10,
+                                border: `1px solid ${BORDER}`,
+                                borderRadius: 18,
+                                background: CARD,
+                                padding: 14,
+                            }}
+                        >
+                            <div style={{ display: "grid", gap: 10, marginBottom: 12 }}>
+                                <input
+                                    placeholder="Capítulo / parte (opcional)"
+                                    value={noteChapter}
+                                    onChange={(e) => setNoteChapter(e.target.value)}
+                                    style={inputStyle}
+                                />
+
+                                <textarea
+                                    placeholder="Escribe tu nota..."
+                                    value={noteText}
+                                    onChange={(e) => setNoteText(e.target.value)}
+                                    rows={4}
+                                    style={{ ...inputStyle, resize: "vertical" }}
+                                />
+
+                                <input
+                                    placeholder="Frase destacada (opcional)"
+                                    value={noteQuote}
+                                    onChange={(e) => setNoteQuote(e.target.value)}
+                                    style={inputStyle}
+                                />
+
+                                <button onClick={() => crearNota(book.id)} style={primaryBtn} type="button">
+                                    Guardar nota
+                                </button>
+                            </div>
+
+                            {notesLoading ? (
+                                <p style={{ opacity: 0.7, margin: 0 }}>Cargando notas...</p>
+                            ) : notes.length === 0 ? (
+                                <p style={{ opacity: 0.7, margin: 0 }}>Todavía no hay notas para este libro.</p>
+                            ) : (
+                                <div style={{ display: "grid", gap: 10 }}>
+                                    {notes.map((n) => ( // cada nota se muestra como una tarjeta
+                                        <div
+                                            key={n.id}
+                                            style={{
+                                                border: `1px solid ${BORDER}`,
+                                                borderRadius: 16,
+                                                padding: 12,
+                                                background: CARD,
+                                            }}
+                                        >
+                                            {editingNoteId === n.id ? ( // si se está editando la nota --> mostrar como input
+                                                <div style={{ display: "grid", gap: 10 }}>
+                                                    <input
+                                                        value={editChapter}
+                                                        onChange={(e) => setEditChapter(e.target.value)}
+                                                        placeholder="Capítulo / parte (opcional)"
+                                                        style={inputStyle}
+                                                    />
+
+                                                    <textarea
+                                                        value={editText}
+                                                        onChange={(e) => setEditText(e.target.value)}
+                                                        rows={4}
+                                                        style={{ ...inputStyle, resize: "vertical" }}
+                                                    />
+
+                                                    <input
+                                                        value={editQuote}
+                                                        onChange={(e) => setEditQuote(e.target.value)}
+                                                        placeholder="Frase destacada (opcional)"
+                                                        style={inputStyle}
+                                                    />
+
+                                                    <div style={{ display: "flex", gap: 8 }}>
+                                                        <button
+                                                            onClick={() => guardarEdicionNota(n.id)}
+                                                            style={{
+                                                                ...primaryBtn,
+                                                                width: "auto",
+                                                                flex: 1,
+                                                            }}
+                                                            type="button"
+                                                        >
+                                                            ✅ Guardar
+                                                        </button>
+                                                        <button
+                                                            onClick={cancelarEditarNota}
+                                                            style={{
+                                                                ...ghostBtn,
+                                                                width: "auto",
+                                                                flex: 1,
+                                                            }}
+                                                            type="button"
+                                                        >
+                                                            ✖ Cancelar
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            ) : (
+                                                <>
+                                                    {n.chapter && (
+                                                        <div style={{ fontSize: 12, color: MUTED, fontWeight: 800, marginBottom: 6 }}>
+                                                            {n.chapter}
+                                                        </div>
+                                                    )}
+
+                                                    <div style={{ whiteSpace: "pre-wrap", color: ACCENT }}>{n.text}</div>
+
+                                                    {n.quote && (
+                                                        <div style={{ marginTop: 8, fontStyle: "italic", color: MUTED }}>
+                                                            “{n.quote}”
+                                                        </div>
+                                                    )}
+
+                                                    {n.createdAt && (
+                                                        <div style={{ marginTop: 8, fontSize: 11, color: MUTED }}>
+                                                            {new Date(n.createdAt).toLocaleString()}
+                                                        </div>
+                                                    )}
+
+                                                    <div style={{ marginTop: 10, display: "flex", gap: 8 }}>
+                                                        <button
+                                                            onClick={() => empezarEditarNota(n)}
+                                                            style={{
+                                                                ...ghostBtn,
+                                                                width: "auto",
+                                                                flex: 1,
+                                                            }}
+                                                            type="button"
+                                                        >
+                                                            ✏️ Editar
+                                                        </button>
+                                                        <button
+                                                            onClick={() => borrarNota(n.id)}
+                                                            style={{
+                                                                ...ghostBtn,
+                                                                width: "auto",
+                                                                flex: 1,
+                                                            }}
+                                                            type="button"
+                                                        >
+                                                            🗑️ Borrar
+                                                        </button>
+                                                    </div>
+                                                </>
+                                            )}
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    )}
+                </div>
+
+                {/* separador final para que no choque con bottom nav */}
+                <div style={{ height: 84 }} />
+            </div>
         </div>
     );
 }
-
-
 
 export default function App() {
     const [user, setUser] = useState(null); // guardamos user autenticado
@@ -488,7 +742,7 @@ export default function App() {
     const [editQuote, setEditQuote] = useState(""); // cita editada
     // estados para review
     const [reviewText, setReviewText] = useState("");
-    const [reviewRating, setReviewRating] = useState("");
+    const [reviewRating, setReviewRating] = useState(5);
     const [reviewIsPublic, setReviewIsPublic] = useState(false);
     const [reviewIsAnonymous, setReviewIsAnonymous] = useState(true);
     const [reviewLoading, setReviewLoading] = useState(false);
@@ -496,6 +750,70 @@ export default function App() {
     const [publicReviewsLoading, setPublicReviewsLoading] = useState(false);
     const [myReview, setMyReview] = useState(null);
 
+    const [activeTab, setActiveTab] = useState("home"); // home | library | diary | discover | room
+
+    // definimos colores
+    const ACCENT = "#2F2A24";
+    const SOFT = "#F6F3EF";
+    const CARD = "#FFFFFF";
+    const BORDER = "#E9E4DE";
+    const MUTED = "rgba(47,42,36,0.60)";
+    // contenido principal de la página
+    const pageWrap = {
+        background: "#FBFAF8",
+        minHeight: "100vh",
+        paddingBottom: 78, // espacio para bottom nav
+    };
+    // contenido centrado
+    const container = {
+        padding: 16,
+        maxWidth: 520,
+        margin: "0 auto",
+    };
+
+    const inputStyle = {
+        padding: 12,
+        borderRadius: 14,
+        border: `1px solid ${BORDER}`,
+        background: SOFT,
+        outline: "none",
+        width: "100%",
+        boxSizing: "border-box",
+        fontSize: 14,
+    };
+
+    const primaryBtn = {
+        padding: "12px 14px",
+        borderRadius: 14,
+        border: `1px solid ${ACCENT}`,
+        background: ACCENT,
+        color: "white",
+        cursor: "pointer",
+        fontWeight: 800,
+        whiteSpace: "nowrap",
+    };
+
+    const ghostBtn = {
+        padding: "12px 14px",
+        borderRadius: 14,
+        border: `1px solid ${BORDER}`,
+        background: CARD,
+        color: ACCENT,
+        cursor: "pointer",
+        fontWeight: 800,
+        whiteSpace: "nowrap",
+    };
+
+    const smallGhostBtn = {
+        padding: "8px 10px",
+        borderRadius: 12,
+        border: `1px solid ${BORDER}`,
+        background: CARD,
+        color: ACCENT,
+        cursor: "pointer",
+        fontWeight: 800,
+        fontSize: 12,
+    };
 
     // probar /api/me (manda token al backend)
     const probarMe = async () => {
@@ -570,7 +888,6 @@ export default function App() {
         name,
         items: (Array.isArray(books) ? books : []).filter((b) => Array.isArray(b.shelves) && b.shelves.includes(name)),
     }));
-
 
     // cambiar estado libro (PATCH /api/books/:id)
     const cambiarEstado = async (id, status) => {
@@ -766,7 +1083,7 @@ export default function App() {
             if (!data) {
                 setMyReview(null);
                 setReviewText("");
-                setReviewRating("");
+                setReviewRating(5);
                 setReviewIsPublic(false);
                 setReviewIsAnonymous(true);
                 return;
@@ -774,7 +1091,7 @@ export default function App() {
 
             setMyReview(data);
             setReviewText(data.text || "");
-            setReviewRating(data.rating ? String(data.rating) : "");
+            setReviewRating(data.rating ? Number(data.rating) : 5);
             setReviewIsPublic(!!data.isPublic);
             setReviewIsAnonymous(data.isAnonymous !== false);
         } catch (e) {
@@ -814,7 +1131,7 @@ export default function App() {
             setMyReview(data);
             setReviewIsPublic(!!data.isPublic);
             setReviewIsAnonymous(data.isAnonymous !== false);
-            setReviewRating(data.rating ? String(data.rating) : reviewRating);
+            setReviewRating(data.rating ? Number(data.rating) : reviewRating);
 
             alert(overrides.isPublic ? "Reseña publicada" : "Reseña guardada");
         } catch (e) {
@@ -907,29 +1224,30 @@ export default function App() {
         listarLibros();
     };
 
-
-
     // sección shelf con portadas
     const Section = ({ title, items }) => (
-        <div>
-            {/* título de la sección */}
-            <h2>{title}</h2>
+        <div style={{ marginTop: 14 }}>
+            {/* título de la sección --> flex: título a la izquierda */}
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
+                <h2 style={{ margin: 0, fontSize: 16, letterSpacing: -0.2, color: ACCENT }}>{title}</h2>
+                <div style={{ fontSize: 12, color: MUTED, fontWeight: 800 }}>{items.length}</div>
+            </div>
+
             {/* si no hay libros --> mostramos texto */}
             {items.length === 0 ? (
-                <p style={{ opacity: 0.7 }}>No hay libros aquí todavía</p>
+                <p style={{ opacity: 0.7, marginTop: 10 }}>No hay libros aquí todavía</p>
             ) : (
-                // grid con portadas
+                // grid con portadas (solo portada + texto, sin select/botones)
                 <div
                     style={{
+                        marginTop: 10,
                         display: "grid",
-                        gridTemplateColumns: "repeat(auto-fill, 130px)",
-                        gap: 20,
-                        justifyContent: "start",
+                        gridTemplateColumns: "repeat(auto-fill, minmax(140px, 1fr))", // adaptamos nº columnas al ancho disponible
+                        gap: 14,
                     }}
                 >
-
-                {items.map((book) => (
-                        <div key={book.id} style={{ textAlign: "center", width: 130,margin: "0 auto", overflow: "visible", }}>
+                    {items.map((book) => (
+                        <div key={book.id} style={{ minWidth: 0 }}>
                             {/* si hay portada mostramos img --> si no, placeholder */}
                             {book.cover?.url ? (
                                 <img
@@ -940,9 +1258,10 @@ export default function App() {
                                         width: "100%",
                                         aspectRatio: "2 / 3",
                                         objectFit: "cover",
-                                        borderRadius: 10,
-                                        border: "1px solid #eee",
+                                        borderRadius: 16,
+                                        border: `1px solid ${BORDER}`,
                                         cursor: "pointer",
+                                        background: SOFT,
                                     }}
                                 />
                             ) : (
@@ -952,18 +1271,20 @@ export default function App() {
                                     style={{
                                         width: "100%",
                                         aspectRatio: "2 / 3",
-                                        background: "#f0f0f0",
-                                        borderRadius: 10,
-                                        border: "1px solid #eee",
+                                        background: SOFT,
+                                        borderRadius: 16,
+                                        border: `1px solid ${BORDER}`,
                                         cursor: "pointer",
                                     }}
                                 />
                             )}
+
                             {/* texto debajo de la portada */}
-                            <div style={{ fontSize: 12 }}>
+                            <div style={{ marginTop: 8, fontSize: 12, minWidth: 0 }}>
                                 <div
                                     style={{
-                                        fontWeight: 600,
+                                        fontWeight: 700,
+                                        color: ACCENT,
                                         overflow: "hidden",
                                         textOverflow: "ellipsis",
                                         whiteSpace: "nowrap",
@@ -973,7 +1294,8 @@ export default function App() {
                                 </div>
                                 <div
                                     style={{
-                                        opacity: 0.7,
+                                        marginTop: 2,
+                                        opacity: 0.6,
                                         overflow: "hidden",
                                         textOverflow: "ellipsis",
                                         whiteSpace: "nowrap",
@@ -982,71 +1304,6 @@ export default function App() {
                                     {book.author}
                                 </div>
                             </div>
-                            <div style={{ marginTop: 6, display: "flex", flexDirection:"column", justifyContent: "center" }}>
-                                {/* selector de estado */}
-                                {/* flexDirection: "column" --> uno debajo del otro */}
-                                <select
-                                    value={`status:${book.status || "to_read"}`}
-                                    onChange={(e) => {
-                                        const v = e.target.value;
-                                        if (v.startsWith("status:")) {
-                                            const status = v.replace("status:", "");
-                                            cambiarEstado(book.id, status);
-                                        }
-                                    }}
-                                    style={{ fontSize: 12, padding: 6, width: "100%", minWidth: 130, boxSizing: "border-box" }}
-                                >
-                                    {/* status (ya definidos) */}
-                                    <option value="status:to_read">Want to read</option>
-                                    <option value="status:reading">Currently reading</option>
-                                    <option value="status:paused">Interrupted</option>
-                                    <option value="status:finished">Finished</option>
-                                </select>
-
-                                {customShelves.length > 0 && (
-                                    <div style={{ marginTop: 6, display: "flex", flexWrap: "wrap", gap: 6, justifyContent: "center" }}>
-                                        {customShelves.map((s) => {
-                                            const active = Array.isArray(book.shelves) && book.shelves.includes(s);
-                                            return (
-                                                <button
-                                                    key={s}
-                                                    onClick={() => toggleBookShelf(book.id, s)}
-                                                    style={{
-                                                        fontSize: 11,
-                                                        padding: "4px 8px",
-                                                        borderRadius: 999,
-                                                        border: "1px solid #ddd",
-                                                        background: active ? "#f3f3f3" : "white",
-                                                        fontWeight: active ? 700 : 400,
-                                                        cursor: "pointer",
-                                                    }}
-                                                    title={active ? "Quitar de esta shelf" : "Añadir a esta shelf"}
-                                                >
-                                                    {s}
-                                                </button>
-                                            );
-                                        })}
-                                    </div>
-                                )}
-
-                                {/* botón borrar */}
-                                <button
-                                    onClick={() => borrarLibro(book.id)}
-                                    style={{
-                                        fontSize: 12,
-                                        padding: "4px 6px",
-                                        borderRadius: 6,
-                                        border: "1px solid #ddd",
-                                        background: "white",
-                                        cursor: "pointer",
-                                        marginTop: 6,
-                                    }}
-                                    title="Borrar libro"
-                                >
-                                    🗑️
-                                </button>
-                            </div>
-
                         </div>
                     ))}
                 </div>
@@ -1102,7 +1359,6 @@ export default function App() {
         }
     };
 
-
     useEffect(() => {
         // escuchamos los cambios de sesión (se ejecuta cada vez que se inicia o cierra sesión)
         const unsub = onAuthStateChanged(auth, (u) => {
@@ -1140,6 +1396,91 @@ export default function App() {
             setPublicReviews([]);
         }
     }, [selectedBook]);
+
+    const topBarTitle = useMemo(() => {
+        if (activeTab === "home") return "Home";
+        if (activeTab === "library") return "Library";
+        if (activeTab === "diary") return "Diary";
+        if (activeTab === "discover") return "Discover";
+        return "Room";
+    }, [activeTab]);
+
+    const TopBar = () => ( // encabezado fijo superior
+        <div
+            style={{
+                position: "sticky",
+                top: 0,
+                zIndex: 10,
+                background: "#FBFAF8",
+                borderBottom: `1px solid ${BORDER}`,
+            }}
+        >
+            <div style={{ ...container, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+                <div style={{ fontWeight: 900, fontSize: 18, color: ACCENT }}>{topBarTitle}</div>
+                <button onClick={() => signOut(auth)} style={smallGhostBtn} type="button">
+                    Cerrar sesión
+                </button>
+            </div>
+        </div>
+    );
+
+    const BottomNav = () => ( // botones nav fija
+        <div
+            style={{
+                position: "fixed",
+                left: 0,
+                right: 0,
+                bottom: 0,
+                background: CARD,
+                borderTop: `1px solid ${BORDER}`,
+                paddingBottom: "max(10px, env(safe-area-inset-bottom))", // safe area movil ->iOS con notch
+                zIndex: 20,
+            }}
+        >
+            <div
+                style={{
+                    maxWidth: 520,
+                    margin: "0 auto",
+                    padding: "10px 16px",
+                    display: "grid",
+                    gridTemplateColumns: "repeat(5, 1fr)",
+                    gap: 6,
+                }}
+            >
+                {[
+                    { key: "home", label: "Home", icon: "⌂" },
+                    { key: "library", label: "Library", icon: "≡" },
+                    { key: "diary", label: "Diary", icon: "▦" },
+                    { key: "discover", label: "Discover", icon: "✦" },
+                    { key: "room", label: "Room", icon: "☺" },
+                ].map((t) => {
+                    const active = activeTab === t.key;
+                    // cambiar estilos según si está activo o no
+                    // activo: ACCENT, 900
+                    // inactivo: MUTED, 800
+                    return (
+                        <button
+                            key={t.key}
+                            onClick={() => setActiveTab(t.key)}
+                            style={{
+                                border: "none",
+                                background: "transparent",
+                                cursor: "pointer",
+                                padding: "6px 8px",
+                                borderRadius: 12,
+                                color: active ? ACCENT : MUTED,
+                                fontWeight: active ? 900 : 800,
+                            }}
+                            type="button"
+                        >
+                            <div style={{ fontSize: 18, lineHeight: "18px" }}>{t.icon}</div>
+                            <div style={{ fontSize: 11, marginTop: 6 }}>{t.label}</div>
+                        </button>
+                    );
+                })}
+            </div>
+        </div>
+    );
 
     if (loading) return <p>Cargando...</p>; // si aun comprobando sesión
     if (!user) return <AuthPage />; // no usuario logueado
@@ -1197,239 +1538,327 @@ export default function App() {
     }
 
     return (
-        <div>
-            <h1>ReadRoom</h1>
-            <p>Sesión iniciada: {user.email}</p> {/* luego cambiar por nickname o algo así */}
-            <button onClick={probarMe}>Probar /api/me</button>
-            <button onClick={listarLibros}>Listar mis libros</button>
-            <hr />
+        <div style={pageWrap}>
+            <TopBar />
 
-            <h2>Buscar libros</h2>
+            <div style={container}>
+                {/* home -> solo renderizamos si user está en home */}
+                {activeTab === "home" && (
+                    <>
+                        {/* card búsqueda */}
+                        <div
+                            style={{
+                                border: `1px solid ${BORDER}`,
+                                borderRadius: 18,
+                                background: CARD,
+                                padding: 14,
+                            }}
+                        >
+                            <div style={{ fontWeight: 900, color: ACCENT, marginBottom: 10 }}>
+                                Buscar
+                            </div>
 
-            <div style={{ display: "flex"}}>
-                <input
-                    value={query}
-                    onChange={(e) => setQuery(e.target.value)}
-                    placeholder="Ej: Harry Potter"
-                    style={{ flex: 1, padding: 8 }}
-                />
-                <button onClick={buscarLibros}>
-                    {/* cambiamos el texto del botón si está buscando */}
-                    {searching ? "Buscando..." : "Buscar"}
-                </button>
-            </div>
+                            <div style={{ display: "flex", gap: 10 }}>
+                                <input
+                                    value={query}
+                                    onChange={(e) => setQuery(e.target.value)}
+                                    placeholder="Título, autor o ISBN"
+                                    style={inputStyle}
+                                />
+                                <button onClick={buscarLibros} style={primaryBtn} type="button">
+                                    {/* cambiamos el texto del botón si está buscando */}
+                                    {searching ? "..." : "Buscar"}
+                                </button>
+                            </div>
+                        </div>
 
-            {/* lista de resultados de Open Library */}
-            {results.length > 0 && (
-                <ul style={{ listStyle: "none", padding: 0 }}>
-                    {results.map((doc) => {
-                        // portada "M" (mediana) para mostrar en resultados
-                        const cover = doc.cover_i
-                            ? `https://covers.openlibrary.org/b/id/${doc.cover_i}-M.jpg`
-                            : null;
+                        {/* resultados tipo cards */}
+                        {results.length > 0 && (
+                            <div style={{ marginTop: 14, display: "grid", gap: 10 }}>
+                                {results.map((doc) => {
+                                    // portada "M" (mediana) para mostrar en resultados
+                                    const cover = doc.cover_i
+                                        ? `https://covers.openlibrary.org/b/id/${doc.cover_i}-M.jpg`
+                                        : null;
 
-                        const author = (doc.author_name && doc.author_name[0]) ? doc.author_name[0] : "Autor desconocido";
-                        const currentStatus = addStatusByKey[doc.key] || "to_read";
+                                    const author = (doc.author_name && doc.author_name[0]) ? doc.author_name[0] : "Autor desconocido";
+                                    const currentStatus = addStatusByKey[doc.key] || "to_read";
 
-                        return (
-                            <li key={doc.key} style={{ display: "flex", gap: 12, padding: 8, borderBottom: "1px solid #ddd" }}>
-                                {/* portada o placeholder */}
-                                {cover ? (
-                                    <img
-                                        src={cover}
-                                        alt="Portada"
-                                        style={{ width: 60, height: 90, objectFit: "cover", borderRadius: 6 }}
+                                    return (
+                                        <div
+                                            key={doc.key}
+                                            style={{
+                                                border: `1px solid ${BORDER}`,
+                                                borderRadius: 18,
+                                                background: CARD,
+                                                padding: 12,
+                                                display: "flex",
+                                                gap: 12,
+                                            }}
+                                        >
+                                            {cover ? (
+                                                <img
+                                                    src={cover}
+                                                    alt="Portada"
+                                                    style={{ width: 56, height: 84, objectFit: "cover", borderRadius: 12, border: `1px solid ${BORDER}` }}
+                                                />
+                                            ) : (
+                                                <div style={{ width: 56, height: 84, background: SOFT, borderRadius: 12, border: `1px solid ${BORDER}` }} />
+                                            )}
+
+                                            <div style={{ flex: 1, minWidth: 0 }}>
+                                                <div
+                                                    style={{
+                                                        fontWeight: 900,
+                                                        color: ACCENT,
+                                                        overflow: "hidden",
+                                                        textOverflow: "ellipsis",
+                                                        whiteSpace: "nowrap",
+                                                    }}
+                                                >
+                                                    {doc.title}
+                                                </div>
+                                                <div style={{ marginTop: 4, color: MUTED, fontSize: 12 }}>{author}</div>
+
+                                                <div style={{ display: "flex", gap: 8, alignItems: "center", marginTop: 10, flexWrap: "wrap" }}>
+                                                    <select
+                                                        value={addShelfChoice}
+                                                        onChange={(e) => {
+                                                            const v = e.target.value;
+                                                            setAddShelfChoice(v);
+
+                                                            if (!v) return;
+
+                                                            if (v.startsWith("status:")) {
+                                                                const status = v.replace("status:", "");
+                                                                setAddStatusByKey((prev) => ({ ...prev, [doc.key]: status }));
+                                                            }
+
+                                                            // reset UI
+                                                            setAddShelfChoice("");
+                                                        }}
+                                                        style={{
+                                                            ...inputStyle,
+                                                            padding: 10,
+                                                            width: "auto",
+                                                            minWidth: 180,
+                                                        }}
+                                                    >
+                                                        <option value="">Choose status…</option>
+                                                        <option value="status:to_read">Want to read</option>
+                                                        <option value="status:reading">Currently reading</option>
+                                                        <option value="status:paused">Interrupted</option>
+                                                        <option value="status:finished">Finished</option>
+                                                    </select>
+
+                                                    <button
+                                                        onClick={() => addFromResult(doc, { status: currentStatus })}
+                                                        style={ghostBtn}
+                                                        type="button"
+                                                    >
+                                                        Add
+                                                    </button>
+                                                </div>
+
+                                                {customShelves.length > 0 && (
+                                                    <div style={{ marginTop: 10 }}>
+                                                        <div style={{ fontSize: 12, color: MUTED, fontWeight: 800, marginBottom: 8 }}>
+                                                            Añadir también a...
+                                                        </div>
+
+                                                        <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                                                            {customShelves.map((s) => (
+                                                                <button
+                                                                    key={s}
+                                                                    onClick={() => addFromResult(doc, { status: currentStatus, shelves: [s] })}
+                                                                    style={{
+                                                                        padding: "8px 10px",
+                                                                        borderRadius: 999,
+                                                                        border: `1px solid ${BORDER}`,
+                                                                        background: CARD,
+                                                                        cursor: "pointer",
+                                                                        fontWeight: 900,
+                                                                        color: ACCENT,
+                                                                        fontSize: 12,
+                                                                    }}
+                                                                    type="button"
+                                                                    title={`Añadir a ${s} manteniendo el status seleccionado`}
+                                                                >
+                                                                    {s}
+                                                                </button>
+                                                            ))}
+                                                        </div>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        )}
+
+                        <Section title="Currently reading" items={currentlyReading} />
+                    </>
+                )}
+
+                {/* library */}
+                {activeTab === "library" && (
+                    <>
+                        <Section title="Currently reading" items={currentlyReading} />
+                        <Section title="Want to read" items={wantToRead} />
+                        <Section title="Interrupted" items={interrupted} />
+                        <Section title="Finished" items={finished} />
+                        {customSections.map((sec) => (
+                            <Section key={sec.name} title={sec.name} items={sec.items} />
+                        ))}
+                    </>
+                )}
+
+                {/* diary (por ahora está simple y el contenido está dentro de detalle libro -> luego mirar) */}
+                {activeTab === "diary" && (
+                    <div
+                        style={{
+                            border: `1px solid ${BORDER}`,
+                            borderRadius: 18,
+                            background: CARD,
+                            padding: 14,
+                        }}
+                    >
+                        <div style={{ fontWeight: 900, color: ACCENT }}>Diary</div>
+                        <div style={{ marginTop: 8, color: MUTED, fontSize: 13 }}>
+                            Abre un libro para escribir notas en su sección Diary.
+                        </div>
+                    </div>
+                )}
+
+                {/* discover (más adelante) */}
+                {activeTab === "discover" && (
+                    <div
+                        style={{
+                            border: `1px solid ${BORDER}`,
+                            borderRadius: 18,
+                            background: CARD,
+                            padding: 14,
+                        }}
+                    >
+                        <div style={{ fontWeight: 900, color: ACCENT }}>Discover</div>
+                        <div style={{ marginTop: 8, color: MUTED, fontSize: 13 }}>
+                            Aquí poner recomendaciones...
+                        </div>
+
+                        <div style={{ marginTop: 12, display: "flex", gap: 10, flexWrap: "wrap" }}>
+                            <button onClick={probarMe} style={ghostBtn} type="button">Probar /api/me</button>
+                            <button onClick={listarLibros} style={ghostBtn} type="button">Listar mis libros</button>
+                        </div>
+                    </div>
+                )}
+
+                {/* room (custom shelves + crear) --> esto luego se modifica */}
+                {activeTab === "room" && (
+                    <>
+                        <div
+                            style={{
+                                border: `1px solid ${BORDER}`,
+                                borderRadius: 18,
+                                background: CARD,
+                                padding: 14,
+                            }}
+                        >
+                            <div style={{ fontWeight: 900, color: ACCENT }}>ReadRoom</div>
+                            <div style={{ marginTop: 6, color: MUTED, fontSize: 12 }}>
+                                Sesión iniciada: {user.email} {/* luego cambiar por nickname o algo así */}
+                            </div>
+                        </div>
+
+                        <div style={{ marginTop: 14 }}>
+                            <h3 style={{ margin: "0 0 10px 0", color: ACCENT }}>Custom shelves</h3>
+
+                            <div
+                                style={{
+                                    border: `1px solid ${BORDER}`,
+                                    borderRadius: 18,
+                                    padding: 14,
+                                    background: CARD,
+                                }}
+                            >
+                                <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+                                    <input
+                                        value={newShelfName}
+                                        onChange={(e) => setNewShelfName(e.target.value)}
+                                        placeholder="Nombre de la shelf"
+                                        style={inputStyle}
                                     />
-                                ) : (
-                                    <div style={{ width: 60, height: 90, background: "#eee", borderRadius: 6 }} />
-                                )}
 
-                                <div style={{ flex: 1 }}>
-                                    <div><strong>{doc.title}</strong></div>
-                                    <div style={{ opacity: 0.8 }}>{author}</div>
+                                    <button
+                                        onClick={async () => {
+                                            const name = newShelfName.trim();
+                                            if (!name) return;
 
-                                    {/* selector --> elegir shelf donde añadir el libro */}
-                                    <div style={{ display: "flex", gap: 8, alignItems: "center", marginTop: 6 }}>
-                                        <span style={{ fontWeight: 600 }}>Add</span>
+                                            try {
+                                                const token = await auth.currentUser.getIdToken();
+                                                const res = await fetch(`${process.env.REACT_APP_API_URL}/api/shelves`, {
+                                                    method: "POST",
+                                                    headers: {
+                                                        "Content-Type": "application/json",
+                                                        Authorization: `Bearer ${token}`,
+                                                    },
+                                                    body: JSON.stringify({ name }),
+                                                });
 
-                                        <select
-                                            value={addShelfChoice}
-                                            onChange={(e) => {
-                                                const v = e.target.value;
-                                                setAddShelfChoice(v);
-
-                                                if (!v) return;
-
-                                                if (v.startsWith("status:")) {
-                                                    const status = v.replace("status:", "");
-                                                    setAddStatusByKey((prev) => ({ ...prev, [doc.key]: status }));
+                                                const data = await res.json();
+                                                if (!res.ok) {
+                                                    alert(data.error || "Error al crear shelf");
+                                                    return;
                                                 }
 
-                                                // reset UI
-                                                setAddShelfChoice("");
-                                            }}
-                                            style={{ padding: 6 }}
-                                        >
-                                            <option value="">Choose status…</option>
+                                                setNewShelfName("");
+                                                listarShelves(); // refrescamos la lsita desde db
+                                            } catch (e) {
+                                                alert("Error al crear shelf");
+                                            }
+                                        }}
+                                        style={primaryBtn}
+                                        title="Crear shelf"
+                                        type="button"
+                                    >
+                                        ➕ Crear
+                                    </button>
+                                </div>
 
-                                            {/* status (ya definidos) */}
-                                            <option value="status:to_read">Want to read</option>
-                                            <option value="status:reading">Currently reading</option>
-                                            <option value="status:paused">Interrupted</option>
-                                            <option value="status:finished">Finished</option>
-                                        </select>
-
-                                        <button
-                                            onClick={() => addFromResult(doc, { status: currentStatus })}
-                                            style={{ padding: "6px 10px" }}
-                                            type="button"
-                                        >
-                                            Add
-                                        </button>
-                                    </div>
-
-                                    {customShelves.length > 0 && (
-                                        <div style={{ marginTop: 8 }}>
-                                            <div style={{ fontSize: 12, opacity: 0.7, marginBottom: 6 }}>
-                                                Añadir también a...
-                                            </div>
-
-                                            <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-                                                {customShelves.map((s) => (
-                                                    <button
-                                                        key={s}
-                                                        onClick={() => addFromResult(doc, { status: currentStatus, shelves: [s] })}
-                                                        style={{
-                                                            fontSize: 12,
-                                                            padding: "6px 10px",
-                                                            borderRadius: 999,
-                                                            border: "1px solid #ddd",
-                                                            background: "white",
-                                                            cursor: "pointer",
-                                                        }}
-                                                        type="button"
-                                                        title={`Añadir a ${s} manteniendo el status seleccionado`}
-                                                    >
-                                                        {s}
-                                                    </button>
-                                                ))}
-                                            </div>
+                                <div style={{ marginTop: 12 }}>
+                                    {customShelves.length === 0 ? (
+                                        <div style={{ opacity: 0.7, fontSize: 13 }}>
+                                            Aún no hay shelves personalizadas.
+                                        </div>
+                                    ) : (
+                                        <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                                            {customShelves.map((s) => (
+                                                <div
+                                                    key={s}
+                                                    style={{
+                                                        padding: "8px 10px",
+                                                        borderRadius: 999,
+                                                        border: `1px solid ${BORDER}`,
+                                                        background: SOFT,
+                                                        fontSize: 12,
+                                                        fontWeight: 900,
+                                                        color: ACCENT,
+                                                    }}
+                                                    title="Shelf personalizada"
+                                                >
+                                                    {s}
+                                                </div>
+                                            ))}
                                         </div>
                                     )}
                                 </div>
-                            </li>
-                        );
-                    })}
-                </ul>
-            )}
-
-            <h2>Library</h2>
-
-            <Section title="Currently reading" items={currentlyReading} />
-            <Section title="Want to read" items={wantToRead} />
-            <Section title="Interrupted" items={interrupted} />
-            <Section title="Finished" items={finished} />
-            {customSections.map((sec) => (
-                <Section key={sec.name} title={sec.name} items={sec.items} />
-            ))}
-
-            <hr />
-            <h3>Custom shelves</h3>
-
-
-            <div
-                style={{
-                    border: "1px solid #eee",
-                    borderRadius: 14,
-                    padding: 12,
-                    background: "#fafafa",
-                    maxWidth: 520,
-                }}
-            >
-                <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                    <input
-                        value={newShelfName}
-                        onChange={(e) => setNewShelfName(e.target.value)}
-                        placeholder="Nombre de la shelf"
-                        style={{
-                            padding: 10,
-                            flex: 1,
-                            borderRadius: 12,
-                            border: "1px solid #ddd",
-                            outline: "none",
-                        }}
-                    />
-
-                    <button
-                        onClick={async () => {
-                            const name = newShelfName.trim();
-                            if (!name) return;
-
-                            try {
-                                const token = await auth.currentUser.getIdToken();
-                                const res = await fetch(`${process.env.REACT_APP_API_URL}/api/shelves`, {
-                                    method: "POST",
-                                    headers: {
-                                        "Content-Type": "application/json",
-                                        Authorization: `Bearer ${token}`,
-                                    },
-                                    body: JSON.stringify({ name }),
-                                });
-
-                                const data = await res.json();
-                                if (!res.ok) {
-                                    alert(data.error || "Error al crear shelf");
-                                    return;
-                                }
-
-                                setNewShelfName("");
-                                listarShelves(); // refrescamos la lsita desde db
-                            } catch (e) {
-                                alert("Error al crear shelf");
-                            }
-                        }}
-                        style={{
-                            padding: "10px 12px",
-                            borderRadius: 12,
-                            border: "1px solid #ddd",
-                            background: "white",
-                            cursor: "pointer",
-                            whiteSpace: "nowrap",
-                        }}
-                        title="Crear shelf"
-                    >
-                        ➕ Crear
-                    </button>
-                </div>
-
-                <div style={{ marginTop: 10 }}>
-                    {customShelves.length === 0 ? (
-                        <div style={{ opacity: 0.7, fontSize: 13 }}>
-                            Aún no hay shelves personalizadas.
+                            </div>
                         </div>
-                    ) : (
-                        <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-                            {customShelves.map((s) => (
-                                <div
-                                    key={s}
-                                    style={{
-                                        padding: "6px 10px",
-                                        borderRadius: 999,
-                                        border: "1px solid #e5e5e5",
-                                        background: "white",
-                                        fontSize: 13,
-                                    }}
-                                    title="Shelf personalizada"
-                                >
-                                    {s}
-                                </div>
-                            ))}
-                        </div>
-                    )}
-                </div>
+                    </>
+                )}
             </div>
 
-            <button onClick={() => signOut(auth)}>Cerrar sesión</button>
+            <BottomNav />
         </div>
     );
 }
