@@ -727,7 +727,7 @@ export default function App() {
     // shelves personalizadas
     const [customShelves, setCustomShelves] = useState([]);
     const [newShelfName, setNewShelfName] = useState("");
-    const [addShelfChoice, setAddShelfChoice] = useState("");
+    //const [addShelfChoice, setAddShelfChoice] = useState("");
     const [addStatusByKey, setAddStatusByKey] = useState({});
 
     // estados para notas
@@ -1224,6 +1224,156 @@ export default function App() {
         listarLibros();
     };
 
+    // --- Estantería visual (lomitos) para libros terminados ---
+    // --- Estantería visual (lomitos) para libros terminados ---
+// Sin fórmulas: paleta fija + asignación por índice
+    const FinishedBookshelf = ({ items, onPick }) => {
+        const MAX = 150;
+        const books = (Array.isArray(items) ? items : []).slice(0, MAX);
+
+        const PALETTE = [
+            "#E7D7C9",
+            "#DCC7B5",
+            "#CDB7A3",
+            "#EADCCF",
+            "#D9C9C0",
+            "#C9B2A7",
+            "#E3D0B9",
+            "#D8C2A8",
+            "#D1C6B8",
+            "#CBB8B0",
+            "#E6D6D6",
+            "#D4CFC7",
+        ];
+
+        const pickColor = (i) => PALETTE[i % PALETTE.length];
+
+        return (
+            <div style={{ marginTop: 14 }}>
+                <div
+                    style={{
+                        display: "flex",
+                        alignItems: "baseline",
+                        justifyContent: "space-between",
+                        gap: 10,
+                        marginBottom: 10,
+                    }}
+                >
+                    <h2 style={{ margin: 0, fontSize: 16, letterSpacing: -0.2, color: ACCENT }}>
+                        Bookshelf
+                    </h2>
+                    <div style={{ fontSize: 12, color: MUTED, fontWeight: 800 }}>
+                        {items.length}
+                    </div>
+                </div>
+
+                <div
+                    style={{
+                        border: `1px solid ${BORDER}`,
+                        borderRadius: 18,
+                        background: CARD,
+                        padding: 14,
+                        overflow: "hidden",
+                    }}
+                >
+                    <div
+                        style={{
+                            borderRadius: 14,
+                            background: SOFT,
+                            padding: 12,
+                        }}
+                    >
+                        {books.length === 0 ? (
+                            <div style={{ color: MUTED, fontSize: 13, fontWeight: 700 }}>
+                                Aquí irán los libros terminados.
+                            </div>
+                        ) : (
+                            <>
+                                <div
+                                    style={{
+                                        display: "flex",
+                                        alignItems: "flex-end",
+                                        gap: 8,
+                                        overflowX: "auto",
+                                        paddingBottom: 10,
+                                        WebkitOverflowScrolling: "touch",
+                                    }}
+                                >
+                                    {books.map((b, idx) => {
+                                        // cambiamos tamaño de los lomos(3 tamaños fijos)
+                                        const HEIGHTS = [118, 124, 130];
+                                        const WIDTHS = [26, 30, 33];
+                                        const h = HEIGHTS[idx % HEIGHTS.length];
+                                        const w = WIDTHS[idx % WIDTHS.length];
+
+                                        return (
+                                            <button
+                                                key={b.id}
+                                                type="button"
+                                                onClick={() => onPick?.(b)}
+                                                title={b.title}
+                                                style={{
+                                                    height: h,
+                                                    width: w,
+                                                    border: `1px solid ${BORDER}`,
+                                                    borderRadius: 10,
+                                                    background: pickColor(idx),
+                                                    cursor: "pointer",
+                                                    padding: 0,
+                                                    flex: "0 0 auto",
+                                                    position: "relative",
+                                                    boxShadow: "0 1px 0 rgba(0,0,0,0.03)",
+                                                }}
+                                            >
+                                                {/* texto rotado */}
+                                                <div
+                                                    style={{
+                                                        position: "absolute",
+                                                        left: "50%",
+                                                        top: "50%",
+                                                        transform: "translate(-50%, -50%) rotate(-90deg)",
+                                                        width: h - 16,
+                                                        textAlign: "center",
+                                                        fontSize: 10,
+                                                        fontWeight: 900,
+                                                        color: ACCENT,
+                                                        opacity: 0.92,
+                                                        whiteSpace: "nowrap",
+                                                        overflow: "hidden",
+                                                        textOverflow: "ellipsis",
+                                                        padding: "0 6px",
+                                                        pointerEvents: "none",
+                                                    }}
+                                                >
+                                                    {b.title || "Sin título"}
+                                                </div>
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+
+                                {/* base de la balda */}
+                                <div
+                                    style={{
+                                        height: 10,
+                                        borderRadius: 999,
+                                        background: "rgba(47,42,36,0.12)",
+                                    }}
+                                />
+                            </>
+                        )}
+                    </div>
+
+                    {books.length > 0 && (
+                        <div style={{ marginTop: 10, fontSize: 12, color: MUTED }}>
+                            Toca un lomo para abrir el libro.
+                        </div>
+                    )}
+                </div>
+            </div>
+        );
+    };
+
     // sección shelf con portadas
     const Section = ({ title, items }) => (
         <div style={{ marginTop: 14 }}>
@@ -1316,6 +1466,55 @@ export default function App() {
         try {
             const token = await auth.currentUser.getIdToken();
 
+            // comprobamos si el libro ya existe en la biblioteca
+            // primero intentamos por openLibraryCoverId
+            const existingByCover = doc.cover_i
+                ? books.find(
+                    (b) => b?.cover?.openLibraryCoverId === doc.cover_i
+                )
+                : null;
+
+            // fallback: título + autor
+            const titleNormalized = (doc.title || "").trim().toLowerCase();
+            const authorNormalized = (
+                (doc.author_name && doc.author_name[0]) ? doc.author_name[0] : ""
+            ).trim().toLowerCase();
+
+            const existingByText = books.find((b) => {
+                const bt = (b.title || "").trim().toLowerCase();
+                const ba = (b.author || "").trim().toLowerCase();
+                return bt === titleNormalized && ba === authorNormalized;
+            });
+
+            const existingBook = existingByCover || existingByText;
+
+            // si ya existe --> actualizamos, no crear duplicado
+
+            if (existingBook) {
+
+                // si viene de status y es distinto --> actualizamos status
+                if (status && existingBook.status !== status) {
+                    await cambiarEstado(existingBook.id, status);
+                }
+
+                // si vienen de shelves --> añadirlas si no existen
+                if (Array.isArray(shelves) && shelves.length > 0) {
+                    for (const s of shelves) {
+                        const hasShelf =
+                            Array.isArray(existingBook.shelves) &&
+                            existingBook.shelves.includes(s);
+
+                        if (!hasShelf) {
+                            await toggleBookShelf(existingBook.id, s);
+                        }
+                    }
+                }
+
+                // refrescar biblioteca y salir
+                listarLibros();
+                return;
+            }
+            // si no existe → crear libro nuevo (la lógica de antes)
             const title = doc.title || "Sin título";
             const author = (doc.author_name && doc.author_name[0]) ? doc.author_name[0] : "";
 
@@ -1323,7 +1522,7 @@ export default function App() {
                 ? `https://covers.openlibrary.org/b/id/${doc.cover_i}-L.jpg`
                 : "";
 
-            // si se elige shelf personalizada y NO viene status, ponemos uno por defecto
+            // si se elige shelf personalizada y no viene status, ponemos uno por defecto
             const finalStatus = status || "to_read";
 
             const res = await fetch(`${process.env.REACT_APP_API_URL}/api/books`, {
@@ -1358,6 +1557,7 @@ export default function App() {
             alert("Error al añadir el libro");
         }
     };
+
 
     useEffect(() => {
         // escuchamos los cambios de sesión (se ejecuta cada vez que se inicia o cierra sesión)
@@ -1572,6 +1772,7 @@ export default function App() {
                             </div>
                         </div>
 
+
                         {/* resultados tipo cards */}
                         {results.length > 0 && (
                             <div style={{ marginTop: 14, display: "grid", gap: 10 }}>
@@ -1583,6 +1784,23 @@ export default function App() {
 
                                     const author = (doc.author_name && doc.author_name[0]) ? doc.author_name[0] : "Autor desconocido";
                                     const currentStatus = addStatusByKey[doc.key] || "to_read";
+                                    // buscar si este resultado ya existe en mi biblioteca (para marcar shelves activas)
+                                    const existingByCover = doc.cover_i
+                                        ? books.find((b) => b?.cover?.openLibraryCoverId === doc.cover_i)
+                                        : null;
+
+                                    const titleNormalized = (doc.title || "").trim().toLowerCase();
+                                    const authorNormalized = (
+                                        (doc.author_name && doc.author_name[0]) ? doc.author_name[0] : ""
+                                    ).trim().toLowerCase();
+
+                                    const existingByText = books.find((b) => {
+                                        const bt = (b.title || "").trim().toLowerCase();
+                                        const ba = (b.author || "").trim().toLowerCase();
+                                        return bt === titleNormalized && ba === authorNormalized;
+                                    });
+
+                                    const existingBook = existingByCover || existingByText;
 
                                     return (
                                         <div
@@ -1621,81 +1839,117 @@ export default function App() {
                                                 <div style={{ marginTop: 4, color: MUTED, fontSize: 12 }}>{author}</div>
 
                                                 <div style={{ display: "flex", gap: 8, alignItems: "center", marginTop: 10, flexWrap: "wrap" }}>
-                                                    <select
-                                                        value={addShelfChoice}
-                                                        onChange={(e) => {
-                                                            const v = e.target.value;
-                                                            setAddShelfChoice(v);
+                                                    <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                                                        {[
+                                                            { key: "to_read", label: "Want to read" },
+                                                            { key: "reading", label: "Currently reading" },
+                                                            { key: "paused", label: "Interrupted" },
+                                                            { key: "finished", label: "Finished" },
+                                                        ].map((opt) => {
+                                                            const active = (addStatusByKey[doc.key] || "") === opt.key;
 
-                                                            if (!v) return;
+                                                            return (
+                                                                <button
+                                                                    key={opt.key}
+                                                                    type="button"
+                                                                    onClick={() => {
+                                                                        // guardamos status seleccionado (UI)
+                                                                        setAddStatusByKey((prev) => ({ ...prev, [doc.key]: opt.key }));
 
-                                                            if (v.startsWith("status:")) {
-                                                                const status = v.replace("status:", "");
-                                                                setAddStatusByKey((prev) => ({ ...prev, [doc.key]: status }));
-                                                            }
+                                                                        // acción inmediata (como en detalle libro)
+                                                                        addFromResult(doc, { status: opt.key });
+                                                                    }}
+                                                                    style={{
+                                                                        padding: "8px 10px",
+                                                                        borderRadius: 999,
+                                                                        border: `1px solid ${active ? ACCENT : BORDER}`,
+                                                                        background: active ? ACCENT : CARD,
+                                                                        color: active ? "white" : ACCENT,
+                                                                        fontWeight: active ? 800 : 600,
+                                                                        cursor: "pointer",
+                                                                        fontSize: 12,
+                                                                        lineHeight: "16px",
+                                                                        whiteSpace: "nowrap",
+                                                                    }}
+                                                                >
+                                                                    {opt.label}
+                                                                </button>
+                                                            );
+                                                        })}
+                                                    </div>
 
-                                                            // reset UI
-                                                            setAddShelfChoice("");
-                                                        }}
-                                                        style={{
-                                                            ...inputStyle,
-                                                            padding: 10,
-                                                            width: "auto",
-                                                            minWidth: 180,
-                                                        }}
-                                                    >
-                                                        <option value="">Choose status…</option>
-                                                        <option value="status:to_read">Want to read</option>
-                                                        <option value="status:reading">Currently reading</option>
-                                                        <option value="status:paused">Interrupted</option>
-                                                        <option value="status:finished">Finished</option>
-                                                    </select>
-
-                                                    <button
-                                                        onClick={() => addFromResult(doc, { status: currentStatus })}
-                                                        style={ghostBtn}
-                                                        type="button"
-                                                    >
-                                                        Add
-                                                    </button>
                                                 </div>
 
                                                 {customShelves.length > 0 && (
                                                     <div style={{ marginTop: 10 }}>
-                                                        <div style={{ fontSize: 12, color: MUTED, fontWeight: 800, marginBottom: 8 }}>
+                                                        <div
+                                                            style={{
+                                                                fontSize: 12,
+                                                                color: MUTED,
+                                                                fontWeight: 800,
+                                                                marginBottom: 8,
+                                                            }}
+                                                        >
                                                             Añadir también a...
                                                         </div>
 
                                                         <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-                                                            {customShelves.map((s) => (
-                                                                <button
-                                                                    key={s}
-                                                                    onClick={() => addFromResult(doc, { status: currentStatus, shelves: [s] })}
-                                                                    style={{
-                                                                        padding: "8px 10px",
-                                                                        borderRadius: 999,
-                                                                        border: `1px solid ${BORDER}`,
-                                                                        background: CARD,
-                                                                        cursor: "pointer",
-                                                                        fontWeight: 900,
-                                                                        color: ACCENT,
-                                                                        fontSize: 12,
-                                                                    }}
-                                                                    type="button"
-                                                                    title={`Añadir a ${s} manteniendo el status seleccionado`}
-                                                                >
-                                                                    {s}
-                                                                </button>
-                                                            ))}
+                                                            {customShelves.map((s) => {
+                                                                // si el libro ya pertenece a esa estantería -> estado activo (igual que BookDetail)
+                                                                const active =
+                                                                    !!existingBook &&
+                                                                    Array.isArray(existingBook.shelves) &&
+                                                                    existingBook.shelves.includes(s);
+
+                                                                return (
+                                                                    <button
+                                                                        key={s}
+                                                                        type="button"
+                                                                        onClick={() => {
+                                                                            // si el libro existe -> toggle real (igual que detalle libro)
+                                                                            if (existingBook?.id) {
+                                                                                toggleBookShelf(existingBook.id, s);
+                                                                                return;
+                                                                            }
+
+                                                                            // si NO existe -> lo creamos ya con esa shelf (y status por defecto)
+                                                                            addFromResult(doc, {
+                                                                                status: addStatusByKey[doc.key] || "to_read",
+                                                                                shelves: [s],
+                                                                            });
+                                                                        }}
+                                                                        style={{
+                                                                            padding: "8px 10px",
+                                                                            borderRadius: 999,
+                                                                            border: `1px solid ${active ? ACCENT : BORDER}`,
+                                                                            background: active ? SOFT : CARD,
+                                                                            fontWeight: active ? 900 : 700,
+                                                                            cursor: "pointer",
+                                                                            color: ACCENT,
+                                                                            fontSize: 12,
+                                                                        }}
+                                                                        title={active ? "Quitar de esta shelf" : "Añadir a esta shelf"}
+                                                                    >
+                                                                        {s}
+                                                                    </button>
+                                                                );
+                                                            })}
                                                         </div>
                                                     </div>
                                                 )}
+
+
+
                                             </div>
                                         </div>
                                     );
                                 })}
                             </div>
                         )}
+                        <FinishedBookshelf
+                            items={finished}
+                            onPick={(b) => setSelectedBook(b)}
+                        />
 
                         <Section title="Currently reading" items={currentlyReading} />
                     </>
