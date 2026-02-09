@@ -9,7 +9,6 @@ import { auth } from "./firebase"; // config de firebase
 import AuthPage from "./AuthPage"; // login
 
 // components:
-// muevo bookDetail fuera de la App para evitar perder el foco al escribir en los inputs
 import BookDetail from "./components/BookDetail";
 import TopBar from "./components/TopBar";
 import BottomNav from "./components/BottomNav";
@@ -161,25 +160,21 @@ export default function App() {
     };
 
     // búsqueda de libros mediante Open Library (API)
-    // la búsqueda ahora está por título (después se puede cambiar: ISBN, autor...)
     const buscarLibros = async () => {
-        const q = query.trim(); // quitar espacios inicio-fin
-        if (!q) return; // si está vacío no buscamos
+        const q = query.trim();
+        if (!q) return;
 
         setSearching(true);
         try {
-            // llamamos a la API
-            const url = `https://openlibrary.org/search.json?title=${encodeURIComponent(q)}&limit=10`;
-            const res = await fetch(url);
-            const data = await res.json();
-
-            setResults(data.docs || []); // guardamos docs (resultados) en estado para mostrar
+            const data = await api.searchOpenLibrary(q); // ahora también búsqueda por autor e ISBN
+            setResults(data.docs || []);
         } catch (e) {
             alert("Error buscando libros");
         } finally {
             setSearching(false);
         }
     };
+
 
     // separar libros por "shelves" (status)
     const wantToRead = (Array.isArray(books) ? books : []).filter((b) => b.status === "to_read");
@@ -679,7 +674,8 @@ export default function App() {
                 )}
 
                 {activeTab === "diary" && (
-                    <Diary BORDER={BORDER} CARD={CARD} ACCENT={ACCENT} MUTED={MUTED} />
+                    <Diary books={books} setSelectedBook={setSelectedBook} styles={styles}/>
+
                 )}
 
                 {activeTab === "discover" && (
@@ -703,11 +699,7 @@ export default function App() {
                         crearShelf={crearShelf}
                         inputStyle={inputStyle}
                         primaryBtn={primaryBtn}
-                        SOFT={SOFT}
-                        BORDER={BORDER}
-                        CARD={CARD}
-                        ACCENT={ACCENT}
-                        MUTED={MUTED}
+                        styles={{styles}}
                     />
                 )}
             </div>

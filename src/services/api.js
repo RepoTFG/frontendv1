@@ -58,6 +58,30 @@ export const api = {
     deleteBook: (token, id) =>
         authFetch(`/api/books/${id}`, { token, method: "DELETE" }),
 
+    // buscar libro Open Library
+    searchOpenLibrary: async (query) => {
+        function isISBN(q) {
+            const cleaned = q.replace(/[-\s]/g, "");
+            return /^\d{10}(\d{3})?$/.test(cleaned);
+        }
+
+        let url;
+
+        if (isISBN(query)) {
+            url = `https://openlibrary.org/search.json?isbn=${encodeURIComponent(query)}&limit=10`;
+        } else {
+            url = `https://openlibrary.org/search.json?q=${encodeURIComponent(query)}&limit=10`;
+        }
+        const res = await fetch(url);
+        const data = await res.json();
+
+        if (!res.ok) {
+            throw new Error("Error buscando en Open Library");
+        }
+
+        return data;
+    },
+
     // notes
     listNotes: (token, bookId) => authFetch(`/api/books/${bookId}/notes`, { token }),
 
@@ -79,6 +103,20 @@ export const api = {
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(payload),
         }),
+
+    listAllNotes: (token, params = {}) => {
+        const qs = new URLSearchParams();
+
+        if (params.bookId) qs.set("bookId", params.bookId);
+        if (params.q) qs.set("q", params.q);
+        if (params.onlyQuotes) qs.set("onlyQuotes", "1");
+        if (params.limit) qs.set("limit", String(params.limit));
+
+        const query = qs.toString();
+        const path = query ? `/api/notes?${query}` : "/api/notes";
+
+        return authFetch(path, { token });
+    },
 
     // review
     getMyReview: (token, bookId) => authFetch(`/api/books/${bookId}/review`, { token }),

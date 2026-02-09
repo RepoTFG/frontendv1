@@ -1,21 +1,17 @@
+import AmbientPlayer from "../components/AmbientPlayer";
+
 export default function Room({
                                  user,
-
-                                 // shelves
                                  newShelfName,
                                  setNewShelfName,
                                  customShelves,
                                  crearShelf,
-
-                                 // styles
                                  inputStyle,
                                  primaryBtn,
-                                 SOFT,
-                                 BORDER,
-                                 CARD,
-                                 ACCENT,
-                                 MUTED,
+                                 styles,
                              }) {
+    const { SOFT, BORDER, CARD, ACCENT, MUTED } = styles;
+
     return (
         <>
             <div
@@ -90,6 +86,9 @@ export default function Room({
                     </div>
                 </div>
             </div>
+
+            {/* Fondo sonoro */}
+            <AmbientPlayer styles={styles} />
         </>
     );
 }
