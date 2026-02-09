@@ -515,6 +515,14 @@ export default function App() {
                     url: coverUrl,
                     openLibraryCoverId: doc.cover_i || null,
                 },
+                openLibrary: {
+                    workKey: typeof doc.key === "string" ? doc.key : "",
+                    authorKey:
+                        Array.isArray(doc.author_key) && doc.author_key[0]
+                            ? `/authors/${doc.author_key[0]}`
+                            : "",
+                },
+
             });
 
             listarLibros();
@@ -575,6 +583,7 @@ export default function App() {
         return (
             <BookDetail
                 book={selectedBook}
+                user={user}
                 onBack={() => {
                     setSelectedBook(null);
                     cancelarEditarNota();

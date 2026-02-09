@@ -58,6 +58,19 @@ export const api = {
     deleteBook: (token, id) =>
         authFetch(`/api/books/${id}`, { token, method: "DELETE" }),
 
+    updateBook: async (token, id, payload) => {
+        const res = await fetch(`${API_BASE}/api/books/${id}`, {
+            method: "PATCH",
+            headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify(payload),
+        });
+        if (!res.ok) throw new Error("updateBook failed");
+        return await res.json();
+    },
+
     // buscar libro Open Library
     searchOpenLibrary: async (query) => {
         function isISBN(q) {
@@ -80,6 +93,21 @@ export const api = {
         }
 
         return data;
+    },
+    getOpenLibraryWork: async (workKey) => {
+        if (!workKey) return null;
+        const path = workKey.startsWith("/") ? workKey : `/${workKey}`;
+        const res = await fetch(`https://openlibrary.org${path}.json`);
+        if (!res.ok) return null;
+        return await res.json();
+    },
+
+    getOpenLibraryAuthor: async (authorKey) => {
+        if (!authorKey) return null;
+        const path = authorKey.startsWith("/") ? authorKey : `/authors/${authorKey}`;
+        const res = await fetch(`https://openlibrary.org${path}.json`);
+        if (!res.ok) return null;
+        return await res.json();
     },
 
     // notes

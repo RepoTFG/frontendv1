@@ -1,49 +1,51 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { api } from "../services/api";
 
 export default function BookDetail({
-                        book,
-                        onBack,
-                        cambiarEstado,
-                        cambiarShelf,
-                        customShelves,
-                        borrarLibro,
-                        notes,
-                        notesLoading,
-                        noteText,
-                        setNoteText,
-                        noteChapter,
-                        setNoteChapter,
-                        noteQuote,
-                        setNoteQuote,
-                        crearNota,
-                        borrarNota,
-                        editingNoteId,
-                        editText,
-                        setEditText,
-                        editChapter,
-                        setEditChapter,
-                        editQuote,
-                        setEditQuote,
-                        empezarEditarNota,
-                        cancelarEditarNota,
-                        guardarEdicionNota,
-                        reviewText,
-                        setReviewText,
-                        reviewRating,
-                        setReviewRating,
-                        reviewLoading,
-                        guardarReview,
-                        compartirReviewAnonima,
-                        cargarResenasPublicas,
-                        publicReviews,
-                        publicReviewsLoading,
-                        cargarReview,
-                        reviewIsPublic,
-                        setReviewIsPublic,
-                        setReviewIsAnonymous,
-                        myReview,
-                        toggleBookShelf,
-                    }) {
+                                       user,
+                                       book,
+                                       onBack,
+                                       cambiarEstado,
+                                       cambiarShelf,
+                                       customShelves,
+                                       borrarLibro,
+                                       notes,
+                                       notesLoading,
+                                       noteText,
+                                       setNoteText,
+                                       noteChapter,
+                                       setNoteChapter,
+                                       noteQuote,
+                                       setNoteQuote,
+                                       crearNota,
+                                       borrarNota,
+                                       editingNoteId,
+                                       editText,
+                                       setEditText,
+                                       editChapter,
+                                       setEditChapter,
+                                       editQuote,
+                                       setEditQuote,
+                                       empezarEditarNota,
+                                       cancelarEditarNota,
+                                       guardarEdicionNota,
+                                       reviewText,
+                                       setReviewText,
+                                       reviewRating,
+                                       setReviewRating,
+                                       reviewLoading,
+                                       guardarReview,
+                                       compartirReviewAnonima,
+                                       cargarResenasPublicas,
+                                       publicReviews,
+                                       publicReviewsLoading,
+                                       cargarReview,
+                                       reviewIsPublic,
+                                       setReviewIsPublic,
+                                       setReviewIsAnonymous,
+                                       myReview,
+                                       toggleBookShelf,
+                                   }) {
     // definimos el estilo
     // colores:
     const ACCENT = "#2F2A24"; // color principal
@@ -53,6 +55,18 @@ export default function BookDetail({
     const MUTED = "rgba(47,42,36,0.60)"; // texto secundario
 
     const [openPanel, setOpenPanel] = useState("review"); // review, diary o null (ver que sección está abierta)
+    // estados para sinopsis
+    const [synopsis, setSynopsis] = useState("");
+    const [synopsisLoading, setSynopsisLoading] = useState(false);
+    // estados para info de autor
+    const [authorOpen, setAuthorOpen] = useState(false);
+    const [authorLoading, setAuthorLoading] = useState(false);
+    const [authorBio, setAuthorBio] = useState("");
+    const [authorPhoto, setAuthorPhoto] = useState("");
+    const [authorName, setAuthorName] = useState(book.author || "");
+    // keys resueltas en cliente (para libros que ya había guardado sin keys)
+    const [resolvedWorkKey, setResolvedWorkKey] = useState("");
+    const [resolvedAuthorKey, setResolvedAuthorKey] = useState("");
 
     const inputStyle = {
         padding: 12,
@@ -119,15 +133,152 @@ export default function BookDetail({
             }}
             type="button"
         >
-
             <span>{title}</span>
             <span style={{ opacity: 0.7 }}>{openPanel === key ? "—" : "+"}</span>
         </button>
-
     );
 
+    function pickText(field) {
+        if (!field) return "";
+        if (typeof field === "string") return field;
+        if (typeof field === "object" && typeof field.value === "string") return field.value;
+        return "";
+    }
+    // comprobar que hay keys:
+    // console.log("BOOK DETAIL", {
+    //    title: book?.title,
+    //    author: book?.author,
+    //    workKey: book?.openLibrary?.workKey,
+    //    authorKey: book?.openLibrary?.authorKey,
+    //});
+
+    // cargar sinopsis desde Open Library (works)
+    // guardamos las keys
+    const workKey = book?.openLibrary?.workKey || "";
+    const authorKey = book?.openLibrary?.authorKey || "";
+    const authorFromBook = book?.author || "";
+    const titleFromBook = book?.title || "";
+
+
+    useEffect(() => {
+        let alive = true;
+
+        async function enrichIfMissing() {
+            // reseteo cada vez que cambia el libro
+            setResolvedWorkKey("");
+            setResolvedAuthorKey("");
+
+            if (!book?.id) return;
+            if (workKey || authorKey) return;
+
+            const q = `${titleFromBook} ${authorFromBook}`.trim();
+            if (!q) return;
+
+            try {
+                const data = await api.searchOpenLibrary(q);
+                const doc = data?.docs?.[0];
+                if (!doc) return;
+
+                const newWorkKey = typeof doc.key === "string" ? doc.key : "";
+                const newAuthorKey =
+                    Array.isArray(doc.author_key) && doc.author_key[0]
+                        ? `/authors/${doc.author_key[0]}`
+                        : "";
+
+                if (!newWorkKey && !newAuthorKey) return;
+
+                // para que se vea auto
+                if (alive) {
+                    setResolvedWorkKey(newWorkKey);
+                    setResolvedAuthorKey(newAuthorKey);
+                }
+
+                // guardamos en Mongo para próximas veces
+                if (user) {
+                    const token = await user.getIdToken();
+                    await api.updateBook(token, book.id, {
+                        openLibrary: { workKey: newWorkKey, authorKey: newAuthorKey },
+                    });
+                }
+            } catch (e) {
+            }
+        }
+
+        enrichIfMissing();
+
+        // reseteamos autor
+        setAuthorName(authorFromBook);
+        setAuthorBio("");
+        setAuthorPhoto("");
+        setAuthorOpen(false);
+        setAuthorLoading(false);
+
+        return () => {
+            alive = false;
+        };
+    }, [book?.id, workKey, authorKey, authorFromBook, titleFromBook, user]);
+
+// cargar sinopsis desde Open Library (works)
+    useEffect(() => {
+        let alive = true;
+
+        async function loadSynopsis() {
+            setSynopsis("");
+            const wk = resolvedWorkKey || workKey;
+            if (!wk) return;
+
+            setSynopsisLoading(true);
+            try {
+                const work = await api.getOpenLibraryWork(wk);
+                const desc = pickText(work?.description);
+                if (alive) setSynopsis(desc || "");
+            } catch (e) {
+                if (alive) setSynopsis("");
+            } finally {
+                if (alive) setSynopsisLoading(false);
+            }
+        }
+
+        loadSynopsis();
+
+        return () => {
+            alive = false;
+        };
+    }, [resolvedWorkKey, workKey]);
+
+
+    // abrir modal autor y cargar bio/foto
+    const openAuthor = async () => {
+        setAuthorOpen(true);
+
+        // si ya lo tenemos cargado, no recargamos
+        if (authorBio || authorPhoto) return;
+
+        const ak = resolvedAuthorKey || book?.openLibrary?.authorKey;
+        if (!ak) {
+            setAuthorBio("No hay authorKey guardada para este libro (no viene de Open Library).");
+            return;
+        }
+
+        setAuthorLoading(true);
+        try {
+            const a = await api.getOpenLibraryAuthor(ak);
+            setAuthorName(a?.name || book?.author || "");
+            setAuthorBio(pickText(a?.bio) || "No hay biografía disponible.");
+            if (Array.isArray(a?.photos) && a.photos[0]) {
+                setAuthorPhoto(`https://covers.openlibrary.org/a/id/${a.photos[0]}-L.jpg`);
+            }
+        } catch (e) {
+            setAuthorBio("No se pudo cargar la biografía del autor.");
+        } finally {
+            setAuthorLoading(false);
+        }
+    };
+
     return (
-        <div style={{ background: "#FBFAF8", minHeight: "100vh" }}> {/* vh -> ocupa al menos toda la altura de la ventana */}
+        <div style={{ background: "#FBFAF8", minHeight: "100vh" }}>
+            {" "}
+            {/* vh -> ocupa al menos toda la altura de la ventana */}
             {/* header fijo */}
             <div
                 style={{
@@ -174,8 +325,8 @@ export default function BookDetail({
                                         flexShrink: 0, // para que no se comprima en pantallas pequeñas
                                     }}
                                 />
-                                // cuando no hay imagen de portada:
                             ) : (
+                                /* cuando no hay imagen de portada: */
                                 <div
                                     style={{
                                         width: 44,
@@ -201,24 +352,36 @@ export default function BookDetail({
                                 >
                                     {book.title}
                                 </div>
-                                <div
+
+                                {/* autor clicable */}
+                                <button
+                                    type="button"
+                                    onClick={openAuthor}
                                     style={{
                                         marginTop: 2,
                                         fontSize: 12,
-                                        color: MUTED,
-                                        overflow: "hidden",
-                                        textOverflow: "ellipsis",
-                                        whiteSpace: "nowrap",
+                                        color: ACCENT,
+                                        background: "transparent",
+                                        border: "none",
+                                        padding: 0,
+                                        cursor: "pointer",
+                                        textAlign: "left",
+                                        textDecoration: "underline",
+                                        textUnderlineOffset: 3,
+                                        display: "inline-flex",
+                                        alignItems: "center",
+                                        gap: 6,
                                     }}
+                                    title="Ver info del autor"
                                 >
-                                    {book.author}
-                                </div>
+                                    {book.author} <span style={{ fontSize: 12, opacity: 0.8 }}>↗</span>
+                                </button>
+
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
-
             <div style={{ padding: 16, maxWidth: 520, margin: "0 auto" }}>
                 {/* bloque info */}
                 <div
@@ -257,9 +420,7 @@ export default function BookDetail({
 
                         {/* info a la derecha */}
                         <div style={{ flex: 1, minWidth: 0 }}>
-                            <div style={{ fontSize: 12, color: MUTED, fontWeight: 800, marginBottom: 8 }}>
-                                Estado
-                            </div>
+                            <div style={{ fontSize: 12, color: MUTED, fontWeight: 800, marginBottom: 8 }}>Estado</div>
 
                             {/* status en chips */}
                             <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
@@ -270,34 +431,21 @@ export default function BookDetail({
                                 >
                                     Want to read
                                 </button>
-                                <button
-                                    type="button"
-                                    onClick={() => cambiarEstado(book.id, "reading")}
-                                    style={pill(book.status === "reading")}
-                                >
+                                <button type="button" onClick={() => cambiarEstado(book.id, "reading")} style={pill(book.status === "reading")}>
                                     Currently reading
                                 </button>
-                                <button
-                                    type="button"
-                                    onClick={() => cambiarEstado(book.id, "paused")}
-                                    style={pill(book.status === "paused")}
-                                >
+                                <button type="button" onClick={() => cambiarEstado(book.id, "paused")} style={pill(book.status === "paused")}>
                                     Interrupted
                                 </button>
-                                <button
-                                    type="button"
-                                    onClick={() => cambiarEstado(book.id, "finished")}
-                                    style={pill(book.status === "finished")}
-                                >
+                                <button type="button" onClick={() => cambiarEstado(book.id, "finished")} style={pill(book.status === "finished")}>
                                     Finished
                                 </button>
                             </div>
 
-                            {customShelves.length > 0 && ( // estanterias personalizadas -> selección múltiple
+                            {customShelves.length > 0 && (
+                                // estanterias personalizadas -> selección múltiple
                                 <div style={{ marginTop: 14 }}>
-                                    <div style={{ fontSize: 12, color: MUTED, fontWeight: 800, marginBottom: 8 }}>
-                                        Añadir también a...
-                                    </div>
+                                    <div style={{ fontSize: 12, color: MUTED, fontWeight: 800, marginBottom: 8 }}>Añadir también a...</div>
 
                                     <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
                                         {customShelves.map((s) => {
@@ -350,10 +498,35 @@ export default function BookDetail({
                     </div>
                 </div>
 
+                {/* sinopsis */}
+                <div style={{ marginTop: 14 }}>
+                    <div
+                        style={{
+                            border: `1px solid ${BORDER}`,
+                            borderRadius: 18,
+                            background: CARD,
+                            padding: 14,
+                        }}
+                    >
+                        <div style={{ fontWeight: 900, color: ACCENT, marginBottom: 8 }}>Sinopsis</div>
+
+                        {synopsisLoading ? (
+                            <div style={{ fontSize: 13, color: MUTED }}>Cargando sinopsis...</div>
+                        ) : synopsis ? (
+                            <div style={{ fontSize: 13, color: ACCENT, whiteSpace: "pre-wrap", lineHeight: 1.5 }}>{synopsis}</div>
+                        ) : (
+                            <div style={{ fontSize: 13, color: MUTED }}>
+                                No se encontró sinopsis para este libro.
+                            </div>
+                        )}
+                    </div>
+                </div>
+
                 {/* review --> sección desplegable */}
                 <div style={{ marginTop: 14 }}>
                     {sectionHeader("Review", "review")}
-                    {openPanel === "review" && ( // controlamos si está abierto o no
+                    {openPanel === "review" && (
+                        // controlamos si está abierto o no
                         <div
                             style={{
                                 marginTop: 10,
@@ -390,9 +563,7 @@ export default function BookDetail({
                                 />
 
                                 <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
-                                    <div style={{ fontSize: 12, color: MUTED, fontWeight: 800, minWidth: 120 }}>
-                                        Modo:
-                                    </div>
+                                    <div style={{ fontSize: 12, color: MUTED, fontWeight: 800, minWidth: 120 }}>Modo:</div>
 
                                     <button
                                         onClick={() => {
@@ -434,18 +605,12 @@ export default function BookDetail({
                                     disabled={reviewLoading}
                                     type="button"
                                 >
-                                    {reviewLoading
-                                        ? "Guardando..."
-                                        : reviewIsPublic
-                                            ? "Guardar y publicar anónimamente"
-                                            : "Guardar reseña (privada)"}
+                                    {reviewLoading ? "Guardando..." : reviewIsPublic ? "Guardar y publicar anónimamente" : "Guardar reseña (privada)"}
                                 </button>
 
                                 <div style={{ fontSize: 12, color: MUTED }}>
                                     Estado actual:{" "}
-                                    <strong style={{ color: ACCENT }}>
-                                        {reviewIsPublic ? "Publicada (anónima)" : "Privada"}
-                                    </strong>
+                                    <strong style={{ color: ACCENT }}>{reviewIsPublic ? "Publicada (anónima)" : "Privada"}</strong>
                                 </div>
 
                                 {/* TU RESEÑA GUARDADA (solo tú) */}
@@ -460,14 +625,10 @@ export default function BookDetail({
                                     >
                                         <div style={{ display: "flex", justifyContent: "space-between", gap: 10 }}>
                                             <div style={{ fontWeight: 900, color: ACCENT }}>Tu reseña guardada</div>
-                                            <div style={{ fontSize: 12, color: MUTED }}>
-                                                ⭐ {myReview.rating || "?"}/5
-                                            </div>
+                                            <div style={{ fontSize: 12, color: MUTED }}>⭐ {myReview.rating || "?"}/5</div>
                                         </div>
 
-                                        <div style={{ marginTop: 8, whiteSpace: "pre-wrap", color: ACCENT }}>
-                                            {myReview.text}
-                                        </div>
+                                        <div style={{ marginTop: 8, whiteSpace: "pre-wrap", color: ACCENT }}>{myReview.text}</div>
 
                                         <div style={{ marginTop: 8, fontSize: 12, color: MUTED }}>
                                             {myReview.isPublic ? "También está publicada (anónima)" : "No está publicada"}
@@ -489,22 +650,17 @@ export default function BookDetail({
                                         </button>
                                     </div>
                                 ) : (
-                                    <div style={{ fontSize: 12, color: MUTED }}>
-                                        Todavía no has guardado una reseña privada para este libro.
-                                    </div>
+                                    <div style={{ fontSize: 12, color: MUTED }}>Todavía no has guardado una reseña privada para este libro.</div>
                                 )}
 
-                                <button
-                                    onClick={() => cargarResenasPublicas(book.id)}
-                                    style={ghostBtn}
-                                    type="button"
-                                >
+                                <button onClick={() => cargarResenasPublicas(book.id)} style={ghostBtn} type="button">
                                     Ver reseñas anónimas de otros
                                 </button>
 
                                 {publicReviewsLoading ? (
                                     <p style={{ opacity: 0.7, margin: 0 }}>Cargando reseñas...</p>
-                                ) : publicReviews.length === 0 ? ( // si no hay resultados
+                                ) : publicReviews.length === 0 ? (
+                                    // si no hay resultados
                                     <p style={{ opacity: 0.7, margin: 0 }}>Todavía no hay reseñas públicas para este libro.</p>
                                 ) : (
                                     <div style={{ display: "grid", gap: 10, marginTop: 4 }}>
@@ -586,7 +742,8 @@ export default function BookDetail({
                                 <p style={{ opacity: 0.7, margin: 0 }}>Todavía no hay notas para este libro.</p>
                             ) : (
                                 <div style={{ display: "grid", gap: 10 }}>
-                                    {notes.map((n) => ( // cada nota se muestra como una tarjeta
+                                    {notes.map((n) => (
+                                        // cada nota se muestra como una tarjeta
                                         <div
                                             key={n.id}
                                             style={{
@@ -596,7 +753,8 @@ export default function BookDetail({
                                                 background: CARD,
                                             }}
                                         >
-                                            {editingNoteId === n.id ? ( // si se está editando la nota --> mostrar como input
+                                            {editingNoteId === n.id ? (
+                                                // si se está editando la nota --> mostrar como input
                                                 <div style={{ display: "grid", gap: 10 }}>
                                                     <input
                                                         value={editChapter}
@@ -647,9 +805,7 @@ export default function BookDetail({
                                             ) : (
                                                 <>
                                                     {n.chapter && (
-                                                        <div style={{ fontSize: 12, color: MUTED, fontWeight: 800, marginBottom: 6 }}>
-                                                            {n.chapter}
-                                                        </div>
+                                                        <div style={{ fontSize: 12, color: MUTED, fontWeight: 800, marginBottom: 6 }}>{n.chapter}</div>
                                                     )}
 
                                                     <div style={{ whiteSpace: "pre-wrap", color: ACCENT }}>{n.text}</div>
@@ -702,6 +858,80 @@ export default function BookDetail({
 
                 {/* separador final para que no choque con bottom nav */}
                 <div style={{ height: 84 }} />
+
+                {/* modal autor */}
+                {authorOpen && (
+                    <div
+                        onClick={() => setAuthorOpen(false)}
+                        style={{
+                            position: "fixed",
+                            inset: 0,
+                            background: "rgba(0,0,0,0.35)",
+                            display: "flex",
+                            justifyContent: "center",
+                            alignItems: "flex-end",
+                            padding: 16,
+                            zIndex: 50,
+                        }}
+                    >
+                        <div
+                            onClick={(e) => e.stopPropagation()}
+                            style={{
+                                width: "100%",
+                                maxWidth: 520,
+                                borderRadius: 18,
+                                border: `1px solid ${BORDER}`,
+                                background: CARD,
+                                padding: 14,
+                            }}
+                        >
+                            <div style={{ display: "flex", justifyContent: "space-between", gap: 10 }}>
+                                <div style={{ fontWeight: 900, color: ACCENT }}>{authorName || "Autor/a"}</div>
+                                <button onClick={() => setAuthorOpen(false)} style={{ ...ghostBtn, width: "auto" }} type="button">
+                                    Cerrar
+                                </button>
+                            </div>
+
+                            <div style={{ display: "flex", gap: 12, marginTop: 12 }}>
+                                {authorPhoto ? (
+                                    <img
+                                        src={authorPhoto}
+                                        alt={authorName}
+                                        style={{
+                                            width: 84,
+                                            height: 84,
+                                            borderRadius: 16,
+                                            objectFit: "cover",
+                                            border: `1px solid ${BORDER}`,
+                                            flexShrink: 0,
+                                        }}
+                                    />
+                                ) : (
+                                    <div
+                                        style={{
+                                            width: 84,
+                                            height: 84,
+                                            borderRadius: 16,
+                                            background: SOFT,
+                                            border: `1px solid ${BORDER}`,
+                                            flexShrink: 0,
+                                        }}
+                                    />
+                                )}
+
+                                <div style={{ flex: 1, minWidth: 0 }}>
+                                    {authorLoading ? (
+                                        <div style={{ fontSize: 13, color: MUTED }}>Cargando biografía...</div>
+                                    ) : (
+                                        <div style={{ fontSize: 13, color: ACCENT, whiteSpace: "pre-wrap", lineHeight: 1.5 }}>
+                                            {authorBio || "No hay biografía disponible."}
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                )}
             </div>
         </div>
     );
