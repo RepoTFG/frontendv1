@@ -25,9 +25,6 @@ export default function Discover({
                 <button onClick={probarMe} style={ghostBtn} type="button">
                     Probar /api/me
                 </button>
-                <button onClick={listarLibros} style={ghostBtn} type="button">
-                    Listar mis libros
-                </button>
             </div>
         </div>
     );

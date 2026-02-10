@@ -182,10 +182,23 @@ export default function App() {
     const interrupted = (Array.isArray(books) ? books : []).filter((b) => b.status === "paused");
     const finished = (Array.isArray(books) ? books : []).filter((b) => b.status === "finished");
     // shelf personalizada
-    const customSections = customShelves.map((name) => ({
+    // ahora en vez de customShelves asumir que son strings --> ahora objetos
+    // shelf personalizada
+    const customShelfNames = (Array.isArray(customShelves) ? customShelves : []).map((s) =>
+        typeof s === "string" ? s : s.name
+    );
+
+    // shelf personalizada
+    const customSections = customShelfNames.map((name) => ({
         name,
-        items: (Array.isArray(books) ? books : []).filter((b) => Array.isArray(b.shelves) && b.shelves.includes(name)),
+        items: (Array.isArray(books) ? books : []).filter(
+            (b) => Array.isArray(b.shelves) && b.shelves.includes(name)
+        ),
     }));
+
+
+
+
 
     // crear shelf personalizada --> usado en botón onClick "+ Crear"
     const crearShelf = async () => {
@@ -203,6 +216,24 @@ export default function App() {
             alert(e.message || "Error al crear shelf");
         }
     };
+    const borrarShelf = async (shelf) => {
+        if (!shelf?.id || typeof shelf.id !== "string" || shelf.id.length !== 24) {
+            alert("No se pudo eliminar: falta el id de la shelf (revisa listarShelves).");
+            return;
+        }
+
+        if (!window.confirm(`¿Eliminar la shelf "${shelf.name}"?`)) return;
+
+        try {
+            const token = await auth.currentUser.getIdToken();
+            await api.deleteShelf(token, shelf.id);
+            listarShelves();
+        } catch (e) {
+            alert(e.message || "Error al eliminar shelf");
+        }
+    };
+
+
 
 
     // cambiar estado libro (PATCH /api/books/:id)
@@ -402,12 +433,21 @@ export default function App() {
         try {
             const token = await auth.currentUser.getIdToken();
             const data = await api.listShelves(token);
-            // guardamos solo nombres
-            setCustomShelves(Array.isArray(data) ? data.map((s) => s.name) : []);
+
+            // ahora objeto (data) [{id, name, ...}]
+            const normalized = (Array.isArray(data) ? data : []).map((s) => ({
+                id: s.id || s._id,
+                name: s.name,
+            }));
+
+            setCustomShelves(normalized);
         } catch (e) {
-            alert(e.message || "Error al listar shelves");
+            alert(e.message || "Error listando shelves");
+            setCustomShelves([]);
         }
     };
+
+
 
     // cambiar shelf (PATCH /api/books/:id)
     const cambiarShelf = async (id, shelf) => {
@@ -590,7 +630,7 @@ export default function App() {
                 }}
                 cambiarEstado={cambiarEstado}
                 cambiarShelf={cambiarShelf}
-                customShelves={customShelves}
+                customShelves={customShelfNames} //solo los nombres
                 borrarLibro={borrarLibro}
                 notes={notes}
                 notesLoading={notesLoading}
@@ -679,6 +719,7 @@ export default function App() {
                         setSelectedBook={setSelectedBook}
                         styles={styles}
                         customShelves={customShelves}
+                        borrarShelf={borrarShelf}
                         newShelfName={newShelfName}
                         setNewShelfName={setNewShelfName}
                         crearShelf={crearShelf}

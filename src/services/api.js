@@ -192,4 +192,10 @@ export const api = {
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(payload),
         }),
+    deleteShelf: (token, id) =>
+        authFetch(`/api/shelves/${id}`, {
+            token,
+            method: "DELETE",
+        }),
+
 };
