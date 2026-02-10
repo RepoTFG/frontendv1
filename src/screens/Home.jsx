@@ -38,10 +38,6 @@ export default function Home({
     const lastQueryRef = useRef("");
 
     useEffect(() => {
-        if (results.length > 0) setResultsOpen(true);
-    }, [results]);
-
-    useEffect(() => {
         if (!query.trim()) setResultsOpen(false);
     }, [query]);
 
@@ -88,7 +84,14 @@ export default function Home({
                         placeholder="Título, autor o ISBN"
                         style={inputStyle}
                     />
-                    <button onClick={buscarLibros} style={primaryBtn} type="button">
+                    <button
+                        onClick={() => {
+                            buscarLibros();
+                            setResultsOpen(true);
+                        }}
+                        style={primaryBtn}
+                        type="button"
+                    >
                         {/* cambiamos el texto del botón si está buscando */}
                         {searching ? "..." : "Buscar"}
                     </button>
