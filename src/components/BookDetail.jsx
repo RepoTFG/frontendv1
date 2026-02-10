@@ -67,6 +67,20 @@ export default function BookDetail({
     // keys resueltas en cliente (para libros que ya había guardado sin keys)
     const [resolvedWorkKey, setResolvedWorkKey] = useState("");
     const [resolvedAuthorKey, setResolvedAuthorKey] = useState("");
+    // relectura
+    const [readCount, setReadCount] = useState(
+        Number.isFinite(book?.readCount) ? book.readCount : 0
+    );
+    const [rereadOpen, setRereadOpen] = useState(false);
+    const [rereadDraft, setRereadDraft] = useState(readCount);
+
+    useEffect(() => {
+        const rc = Number.isFinite(book?.readCount) ? book.readCount : 0;
+        setReadCount(rc);
+        setRereadDraft(rc);
+    }, [book?.id, book?.readCount]);
+
+
 
     const inputStyle = {
         padding: 12,
@@ -246,7 +260,6 @@ export default function BookDetail({
         };
     }, [resolvedWorkKey, workKey]);
 
-
     // abrir modal autor y cargar bio/foto
     const openAuthor = async () => {
         setAuthorOpen(true);
@@ -274,6 +287,24 @@ export default function BookDetail({
             setAuthorLoading(false);
         }
     };
+
+    const guardarRelecturas = async () => {
+        try {
+            if (!user) return;
+            const token = await user.getIdToken();
+
+            const safe = Math.max(0, Math.floor(Number(rereadDraft) || 0));
+
+            await api.patchBook(token, book.id, { readCount: safe });
+            // actualizar UI
+            setReadCount(safe);
+            setRereadOpen(false);
+        } catch (e) {
+            alert(e.message || "Error guardando relecturas");
+        }
+    };
+
+
 
     return (
         <div style={{ background: "#FBFAF8", minHeight: "100vh" }}>
@@ -394,29 +425,57 @@ export default function BookDetail({
                 >
                     <div style={{ display: "flex", gap: 14 }}>
                         {/* portada a la izquierda */}
-                        {book.cover?.url ? (
-                            <img
-                                src={book.cover.url}
-                                alt={book.title}
+                        <div style={{ position: "relative", width: 96, height: 144, flexShrink: 0 }}>
+                            {book.cover?.url ? (
+                                <img
+                                    src={book.cover.url}
+                                    alt={book.title}
+                                    style={{
+                                        width: "100%",
+                                        height: "100%",
+                                        objectFit: "cover",
+                                        borderRadius: 14,
+                                        border: `1px solid ${BORDER}`,
+                                    }}
+                                />
+                            ) : (
+                                <div
+                                    style={{
+                                        width: "100%",
+                                        height: "100%",
+                                        background: SOFT,
+                                        borderRadius: 14,
+                                        border: `1px solid ${BORDER}`,
+                                    }}
+                                />
+                            )}
+
+                            {/* botón relectura */}
+                            <button
+                                type="button"
+                                onClick={() => setRereadOpen(true)}
+                                title="Editar relecturas"
                                 style={{
-                                    width: 96,
-                                    height: 144,
-                                    objectFit: "cover",
-                                    borderRadius: 14,
+                                    position: "absolute",
+                                    top: 8,
+                                    right: 8,
+                                    borderRadius: 999,
                                     border: `1px solid ${BORDER}`,
+                                    background: "rgba(255,255,255,0.92)",
+                                    padding: "6px 10px",
+                                    fontWeight: 900,
+                                    cursor: "pointer",
+                                    color: ACCENT,
+                                    display: "inline-flex",
+                                    alignItems: "center",
+                                    gap: 6,
                                 }}
-                            />
-                        ) : (
-                            <div
-                                style={{
-                                    width: 96,
-                                    height: 144,
-                                    background: SOFT,
-                                    borderRadius: 14,
-                                    border: `1px solid ${BORDER}`,
-                                }}
-                            />
-                        )}
+                            >
+                                <span>↻</span>
+                                {readCount > 0 && <span>{readCount}</span>}
+                            </button>
+
+                        </div>
 
                         {/* info a la derecha */}
                         <div style={{ flex: 1, minWidth: 0 }}>
@@ -441,6 +500,7 @@ export default function BookDetail({
                                     Finished
                                 </button>
                             </div>
+
 
                             {customShelves.length > 0 && (
                                 // estanterias personalizadas -> selección múltiple
@@ -933,6 +993,75 @@ export default function BookDetail({
                     </div>
                 )}
             </div>
+            {/* modal relecturas */}
+            {rereadOpen && (
+                <div
+                    onClick={() => setRereadOpen(false)}
+                    style={{
+                        position: "fixed",
+                        inset: 0,
+                        background: "rgba(0,0,0,0.35)",
+                        display: "flex",
+                        justifyContent: "center",
+                        alignItems: "flex-end",
+                        padding: 16,
+                        zIndex: 60,
+                    }}
+                >
+                    <div
+                        onClick={(e) => e.stopPropagation()}
+                        style={{
+                            width: "100%",
+                            maxWidth: 520,
+                            borderRadius: 18,
+                            border: `1px solid ${BORDER}`,
+                            background: CARD,
+                            padding: 14,
+                        }}
+                    >
+                        <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "center" }}>
+                            <div style={{ fontWeight: 900, color: ACCENT }}>Relecturas</div>
+                            <button onClick={() => setRereadOpen(false)} style={{ ...ghostBtn, width: "auto" }} type="button">
+                                Cerrar
+                            </button>
+                        </div>
+
+                        <div style={{ display: "flex", gap: 10, alignItems: "center", marginTop: 12 }}>
+                            <button
+                                type="button"
+                                onClick={() => setRereadDraft((v) => Math.max(0, (Number(v) || 0) - 1))}
+                                style={{ ...ghostBtn, width: 44, padding: 10 }}
+                                title="Restar 1"
+                            >
+                                −
+                            </button>
+
+                            <input
+                                type="number"
+                                min={0}
+                                value={rereadDraft}
+                                onChange={(e) => setRereadDraft(e.target.value)}
+                                style={{ ...inputStyle, textAlign: "center", fontWeight: 900 }}
+                            />
+
+                            <button
+                                type="button"
+                                onClick={() => setRereadDraft((v) => (Number(v) || 0) + 1)}
+                                style={{ ...ghostBtn, width: 44, padding: 10 }}
+                                title="Sumar 1"
+                            >
+                                +
+                            </button>
+                        </div>
+
+                        <button onClick={guardarRelecturas} style={{ ...primaryBtn, marginTop: 12 }} type="button">
+                            Guardar
+                        </button>
+
+                    </div>
+                </div>
+            )}
+
         </div>
     );
 }

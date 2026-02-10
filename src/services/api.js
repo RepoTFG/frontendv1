@@ -70,6 +70,12 @@ export const api = {
         if (!res.ok) throw new Error("updateBook failed");
         return await res.json();
     },
+    // relectura
+    rereadBook: (token, id) =>
+        authFetch(`/api/books/${id}/reread`, {
+            token,
+            method: "POST",
+        }),
 
     // buscar libro Open Library
     searchOpenLibrary: async (query) => {
