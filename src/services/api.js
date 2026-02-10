@@ -170,6 +170,9 @@ export const api = {
         if (!res.ok) throw new Error(data?.error || "Error al cargar reseñas públicas");
         return data;
     },
+    // reviews todas (publicas y privadas)
+    getMyReviews: (token) => authFetch("/api/reviews/mine", { token }),
+
 
     // shelves
     listShelves: (token) => authFetch("/api/shelves", { token }),

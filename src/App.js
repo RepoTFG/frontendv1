@@ -678,6 +678,12 @@ export default function App() {
                         customSections={customSections}
                         setSelectedBook={setSelectedBook}
                         styles={styles}
+                        customShelves={customShelves}
+                        newShelfName={newShelfName}
+                        setNewShelfName={setNewShelfName}
+                        crearShelf={crearShelf}
+                        inputStyle={inputStyle}
+                        primaryBtn={primaryBtn}
 
                     />
                 )}
