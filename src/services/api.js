@@ -87,7 +87,7 @@ export const api = {
         let url;
 
         if (isISBN(query)) {
-            url = `https://openlibrary.org/search.json?isbn=${encodeURIComponent(query)}&limit=10`;
+            url = `https://openlibrary.org/search.json?isbn=${encodeURIComponent(query)}&limit=10`; // 10 resultados
         } else {
             url = `https://openlibrary.org/search.json?q=${encodeURIComponent(query)}&limit=10`;
         }
