@@ -60,6 +60,11 @@ export default function App() {
     const [myReview, setMyReview] = useState(null);
 
     const [activeTab, setActiveTab] = useState("home"); // home | library | diary | discover | room
+    // mood:
+    // mood de la nueva nota (opcional)
+    const [noteMood, setNoteMood] = useState("");
+    // mood al editar una nota
+    const [editMood, setEditMood] = useState("");
 
     // definimos colores
     const ACCENT = "#2F2A24";
@@ -289,12 +294,13 @@ export default function App() {
                 chapter: noteChapter.trim(),
                 text,
                 quote: noteQuote.trim(),
+                mood: noteMood || "",
             });
             // limpiar form
             setNoteText("");
             setNoteChapter("");
             setNoteQuote("");
-
+            setNoteMood("");
             cargarNotas(bookId); // recargar notas
         } catch (e) {
             alert(e.message || "Error al guardar la nota");
@@ -320,6 +326,7 @@ export default function App() {
         setEditText(note.text || "");
         setEditChapter(note.chapter || "");
         setEditQuote(note.quote || "");
+        setEditMood(note.mood || "");
     };
 
     const cancelarEditarNota = () => {
@@ -327,6 +334,7 @@ export default function App() {
         setEditText("");
         setEditChapter("");
         setEditQuote("");
+        setEditMood("");
     };
 
     const guardarEdicionNota = async (noteId) => {
@@ -339,6 +347,7 @@ export default function App() {
                 text,
                 chapter: editChapter.trim(),
                 quote: editQuote.trim(),
+                mood: editMood || "",
             });
             // refrescar y salir del modo edición
             if (selectedBook) await cargarNotas(selectedBook.id);
@@ -542,6 +551,12 @@ export default function App() {
             // si se elige shelf personalizada y no viene status, ponemos uno por defecto
             const finalStatus = status || "to_read";
 
+            const work = await api.getOpenLibraryWork(doc.key); // doc.key tipo "/works/OLxxxxW"
+            // ahora genres vienen de work (API) no de doc.subject
+            const genresFromWork = Array.isArray(work?.subjects)
+                ? work.subjects.slice(0, 5)
+                : [];
+
             // antes era fetch POST /api/books --> ahora api.createBook
             await api.createBook(token, {
                 title,
@@ -549,7 +564,7 @@ export default function App() {
                 status: finalStatus,
                 shelves: Array.isArray(shelves) ? shelves : [],
                 tags: ["biblioteca"],
-                genres: doc.subject ? doc.subject.slice(0, 3) : [],
+                genres: genresFromWork,
                 cover: {
                     source: "openlibrary",
                     url: coverUrl,
@@ -668,6 +683,10 @@ export default function App() {
                 myReview={myReview}
                 reviewLoading={reviewLoading}
                 toggleBookShelf={toggleBookShelf}
+                noteMood={noteMood}
+                setNoteMood={setNoteMood}
+                editMood={editMood}
+                setEditMood={setEditMood}
             />
         );
     }

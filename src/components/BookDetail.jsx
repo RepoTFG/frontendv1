@@ -45,6 +45,10 @@ export default function BookDetail({
                                        setReviewIsAnonymous,
                                        myReview,
                                        toggleBookShelf,
+                                       noteMood,
+                                       setNoteMood,
+                                       editMood,
+                                       setEditMood,
                                    }) {
     // definimos el estilo
     // colores:
@@ -74,6 +78,16 @@ export default function BookDetail({
     const [rereadOpen, setRereadOpen] = useState(false);
     const [rereadDraft, setRereadDraft] = useState(readCount);
 
+    // moods (igual que en Diary)
+    const MOODS = ["", "relaxed", "thoughtful", "excited", "anxious", "romantic", "curious"];
+    const moodLabel = (m) =>
+        m === "relaxed" ? "relaxed" :
+            m === "thoughtful" ? "thoughtful" :
+                m === "excited" ? "excited" :
+                    m === "anxious" ? "anxious" :
+                        m === "romantic" ? "romantic" :
+                            m === "curious" ? "curious" :
+                                "—";
     // modo libro borrado (abierto desde Diary)
     const isDeleted = !!book?._deleted;
 
@@ -158,7 +172,7 @@ export default function BookDetail({
             <span style={{ opacity: 0.7 }}>{openPanel === key ? "—" : "+"}</span>
         </button>
     );
-
+    // evitar errores por diferencia en el formato JSON externo (para sinopsis --> campo description API)
     function pickText(field) {
         if (!field) return "";
         if (typeof field === "string") return field;
@@ -180,7 +194,7 @@ export default function BookDetail({
     const authorFromBook = book?.author || "";
     const titleFromBook = book?.title || "";
 
-
+    // si libro no tiene keys --> extraer mediante búsqueda
     useEffect(() => {
         let alive = true;
 
@@ -826,6 +840,26 @@ export default function BookDetail({
                                 }}
                             >
                                 <div style={{ display: "grid", gap: 10, marginBottom: 12 }}>
+                                    {/* mood al crear la nota (opcional) */}
+                                    <div style={{ display: "grid", gap: 6 }}>
+                                        <div style={{ fontSize: 12, color: MUTED, fontWeight: 800 }}>
+                                            Mood (opcional)
+                                        </div>
+                                        <select
+                                            value={noteMood}
+                                            onChange={(e) => setNoteMood(e.target.value)}
+                                            style={inputStyle}
+                                            title="¿Cómo te sientes al escribir esta nota?"
+                                        >
+                                            <option value="">—</option>
+                                            {MOODS.filter((m) => m !== "").map((m) => (
+                                                <option key={m} value={m}>
+                                                    {m}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </div>
+
                                     <input
                                         placeholder="Capítulo / parte (opcional)"
                                         value={noteChapter}
@@ -873,6 +907,26 @@ export default function BookDetail({
                                                 {editingNoteId === n.id ? (
                                                     // si se está editando la nota --> mostrar como input
                                                     <div style={{ display: "grid", gap: 10 }}>
+                                                        {/* mood al editar la nota (opcional) */}
+                                                        <div style={{ display: "grid", gap: 6 }}>
+                                                            <div style={{ fontSize: 12, color: MUTED, fontWeight: 800 }}>
+                                                                Mood (opcional)
+                                                            </div>
+                                                            <select
+                                                                value={editMood}
+                                                                onChange={(e) => setEditMood(e.target.value)}
+                                                                style={inputStyle}
+                                                                title="Actualizar mood de la nota"
+                                                            >
+                                                                <option value="">—</option>
+                                                                {MOODS.filter((m) => m !== "").map((m) => (
+                                                                    <option key={m} value={m}>
+                                                                        {m}
+                                                                    </option>
+                                                                ))}
+                                                            </select>
+                                                        </div>
+
                                                         <input
                                                             value={editChapter}
                                                             onChange={(e) => setEditChapter(e.target.value)}
@@ -921,6 +975,13 @@ export default function BookDetail({
                                                     </div>
                                                 ) : (
                                                     <>
+                                                        {/* mostramos mood solo si existe */}
+                                                        {typeof n.mood === "string" && n.mood.trim() && (
+                                                            <div style={{ fontSize: 12, color: MUTED, fontWeight: 800, marginBottom: 6 }}>
+                                                                Mood: <span style={{ color: ACCENT }}>{moodLabel(n.mood)}</span>
+                                                            </div>
+                                                        )}
+
                                                         {n.chapter && (
                                                             <div style={{ fontSize: 12, color: MUTED, fontWeight: 800, marginBottom: 6 }}>{n.chapter}</div>
                                                         )}
