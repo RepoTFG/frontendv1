@@ -46,6 +46,13 @@ export default function Diary({ books, setSelectedBook, styles }) {
     //mood de la nueva nota (opcional)
     const [noteMood, setNoteMood] = useState("");
 
+    // editar nota (igual que en BookDetail)
+    const [editingNoteId, setEditingNoteId] = useState(null);
+    const [editText, setEditText] = useState("");
+    const [editChapter, setEditChapter] = useState("");
+    const [editQuote, setEditQuote] = useState("");
+    const [editMood, setEditMood] = useState("");
+
     // map para resolver bookId --> info libro
     const bookById = useMemo(() => {
         const m = new Map();
@@ -225,6 +232,66 @@ export default function Diary({ books, setSelectedBook, styles }) {
             alert(e.message || "Error guardando la entrada");
         } finally {
             setSaving(false);
+        }
+    };
+
+    const empezarEditarNota = (n) => {
+        setEditingNoteId(n.id);
+        setEditText(n.text || "");
+        setEditChapter(n.chapter || "");
+        setEditQuote(n.quote || "");
+        setEditMood(n.mood || "");
+    };
+
+    const cancelarEditarNota = () => {
+        setEditingNoteId(null);
+        setEditText("");
+        setEditChapter("");
+        setEditQuote("");
+        setEditMood("");
+    };
+
+    const guardarEdicionNota = async (noteId) => {
+        try {
+            if (!noteId) return;
+
+            if (!editText.trim()) {
+                alert("Escribe tu nota antes de guardar.");
+                return;
+            }
+
+            const token = await auth.currentUser.getIdToken();
+
+            await api.patchNote(token, noteId, {
+                chapter: editChapter || "",
+                text: editText.trim(),
+                quote: editQuote || "",
+                mood: editMood || "",
+            });
+
+            cancelarEditarNota();
+            await load();
+        } catch (e) {
+            alert(e.message || "Error guardando la edición");
+        }
+    };
+
+    const borrarNota = async (noteId) => {
+        try {
+            if (!noteId) return;
+
+            const ok = window.confirm("¿Seguro que quieres borrar esta nota?");
+            if (!ok) return;
+
+            const token = await auth.currentUser.getIdToken();
+
+            await api.deleteNote(token, noteId);
+
+            if (editingNoteId === noteId) cancelarEditarNota();
+
+            await load();
+        } catch (e) {
+            alert(e.message || "Error borrando la nota");
         }
     };
 
@@ -452,20 +519,130 @@ export default function Diary({ books, setSelectedBook, styles }) {
                                     </div>
                                 )}
 
-                                {n.chapter && (
-                                    <div style={{ marginTop: 10, fontSize: 12, color: MUTED, fontWeight: 800 }}>
-                                        {n.chapter}
-                                    </div>
-                                )}
+                                {editingNoteId === n.id ? (
+                                    // si se está editando la nota --> mostrar como input
+                                    <div style={{ display: "grid", gap: 10, marginTop: 12 }}>
+                                        {/* mood al editar la nota (opcional) */}
+                                        <div style={{ display: "grid", gap: 6 }}>
+                                            <div style={{ fontSize: 12, color: MUTED, fontWeight: 800 }}>
+                                                Mood (opcional)
+                                            </div>
+                                            <select
+                                                value={editMood}
+                                                onChange={(e) => setEditMood(e.target.value)}
+                                                style={inputStyle}
+                                                title="Actualizar mood de la nota"
+                                            >
+                                                <option value="">—</option>
+                                                {MOODS.filter((m) => m !== "").map((m) => (
+                                                    <option key={m} value={m}>
+                                                        {m}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                        </div>
 
-                                <div style={{ marginTop: 8, color: ACCENT, whiteSpace: "pre-wrap" }}>
-                                    {n.text}
-                                </div>
+                                        <input
+                                            value={editChapter}
+                                            onChange={(e) => setEditChapter(e.target.value)}
+                                            placeholder="Capítulo / parte (opcional)"
+                                            style={inputStyle}
+                                        />
 
-                                {n.quote && (
-                                    <div style={{ marginTop: 8, fontStyle: "italic", color: MUTED }}>
-                                        “{n.quote}”
+                                        <textarea
+                                            value={editText}
+                                            onChange={(e) => setEditText(e.target.value)}
+                                            rows={4}
+                                            style={{ ...inputStyle, resize: "vertical" }}
+                                        />
+
+                                        <input
+                                            value={editQuote}
+                                            onChange={(e) => setEditQuote(e.target.value)}
+                                            placeholder="Frase destacada (opcional)"
+                                            style={inputStyle}
+                                        />
+
+                                        <div style={{ display: "flex", gap: 8 }}>
+                                            <button
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    guardarEdicionNota(n.id);
+                                                }}
+                                                style={{
+                                                    ...primaryBtn,
+                                                    width: "auto",
+                                                    flex: 1,
+                                                }}
+                                                type="button"
+                                            >
+                                                ✅ Guardar
+                                            </button>
+                                            <button
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    cancelarEditarNota();
+                                                }}
+                                                style={{
+                                                    ...ghostBtn,
+                                                    width: "auto",
+                                                    flex: 1,
+                                                }}
+                                                type="button"
+                                            >
+                                                ✖ Cancelar
+                                            </button>
+                                        </div>
                                     </div>
+                                ) : (
+                                    <>
+                                        {n.chapter && (
+                                            <div style={{ marginTop: 10, fontSize: 12, color: MUTED, fontWeight: 800 }}>
+                                                {n.chapter}
+                                            </div>
+                                        )}
+
+                                        <div style={{ marginTop: 8, color: ACCENT, whiteSpace: "pre-wrap" }}>
+                                            {n.text}
+                                        </div>
+
+                                        {n.quote && (
+                                            <div style={{ marginTop: 8, fontStyle: "italic", color: MUTED }}>
+                                                “{n.quote}”
+                                            </div>
+                                        )}
+
+                                        <div style={{ marginTop: 10, display: "flex", gap: 8 }}>
+                                            <button
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    empezarEditarNota(n);
+                                                }}
+                                                style={{
+                                                    ...ghostBtn,
+                                                    width: "auto",
+                                                    flex: 1,
+                                                }}
+                                                type="button"
+                                            >
+                                                Editar
+                                            </button>
+                                            <button
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    borrarNota(n.id);
+                                                }}
+                                                style={{
+                                                    ...ghostBtn,
+                                                    width: "auto",
+                                                    flex: 1,
+                                                }}
+                                                type="button"
+                                            >
+                                                Borrar
+                                            </button>
+                                        </div>
+                                    </>
                                 )}
                             </div>
                         );

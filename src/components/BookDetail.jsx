@@ -842,16 +842,22 @@ export default function BookDetail({
                                 <div style={{ display: "grid", gap: 10, marginBottom: 12 }}>
                                     {/* mood al crear la nota (opcional) */}
                                     <div style={{ display: "grid", gap: 6 }}>
-                                        <div style={{ fontSize: 12, color: MUTED, fontWeight: 800 }}>
-                                            Mood (opcional)
-                                        </div>
                                         <select
                                             value={noteMood}
                                             onChange={(e) => setNoteMood(e.target.value)}
-                                            style={inputStyle}
+                                            style={{
+                                                ...inputStyle,
+                                                color: noteMood ? "#222" : MUTED,
+                                            }}
                                             title="¿Cómo te sientes al escribir esta nota?"
                                         >
-                                            <option value="">—</option>
+                                            {/* placeholder */}
+                                            <option value="" style={{ color: MUTED }}>
+                                                Mood (optional)
+                                            </option>
+
+
+                                            {/* moods reales */}
                                             {MOODS.filter((m) => m !== "").map((m) => (
                                                 <option key={m} value={m}>
                                                     {m}
@@ -1010,7 +1016,7 @@ export default function BookDetail({
                                                                 }}
                                                                 type="button"
                                                             >
-                                                                ✏️ Editar
+                                                                Editar
                                                             </button>
                                                             <button
                                                                 onClick={() => borrarNota(n.id)}
@@ -1021,7 +1027,7 @@ export default function BookDetail({
                                                                 }}
                                                                 type="button"
                                                             >
-                                                                🗑️ Borrar
+                                                                Borrar
                                                             </button>
                                                         </div>
                                                     </>
