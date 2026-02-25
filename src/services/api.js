@@ -172,8 +172,25 @@ export const api = {
     },
     // reviews todas (publicas y privadas)
     getMyReviews: (token) => authFetch("/api/reviews/mine", { token }),
+    // mood recommendation
+    discoverMood: (token, payload) =>
+        authFetch("/api/discover/mood", {
+            token,
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload || {}),
+        }),
 
-
+    // book of the day
+    getBookOfDay: (token) => authFetch("/api/discover/book-of-day", { token }),
+    getBookOfDayFeedback: (token) => authFetch("/api/discover/book-of-day/feedback", { token }),
+    sendBookOfDayFeedback: (token, value) =>
+        authFetch("/api/discover/book-of-day/feedback", {
+            token,
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ value }),
+        }),
     // shelves
     listShelves: (token) => authFetch("/api/shelves", { token }),
 

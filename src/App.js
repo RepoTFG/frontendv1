@@ -65,7 +65,9 @@ export default function App() {
     const [noteMood, setNoteMood] = useState("");
     // mood al editar una nota
     const [editMood, setEditMood] = useState("");
-
+    // book of the Day
+    const [bookOfDay, setBookOfDay] = useState(null);
+    const [bookOfDayLoading, setBookOfDayLoading] = useState(false);
     // definimos colores
     const ACCENT = "#2F2A24";
     const SOFT = "#F6F3EF";
@@ -142,15 +144,14 @@ export default function App() {
     };
 
     // probar /api/me (manda token al backend)
-    const probarMe = async () => {
-        try {
-            const token = await auth.currentUser.getIdToken();
-            const data = await api.me(token);
-            alert(`UID: ${data.uid}\nEmail: ${data.email}`);
-        } catch (e) {
-            alert(e.message || "Error al comprobar el usuario");
-        }
-    };
+    //const probarMe = async () => {
+    //    try {
+    //        const token = await auth.currentUser.getIdToken();
+    //        const data = await api.me(token);
+    //        alert(`UID: ${data.uid}\nEmail: ${data.email}`);
+    //        alert(e.message || "Error al comprobar el usuario");
+    //    }
+    //};
 
     // listar libros (GET /api/books)
     const listarLibros = async () => {
@@ -356,7 +357,20 @@ export default function App() {
             alert(e.message || "Error al editar la nota");
         }
     };
-
+    // book of the day
+    const cargarBookOfDay = async () => {
+        try {
+            setBookOfDayLoading(true); // mostramos cargando
+            const token = await auth.currentUser.getIdToken();
+            const data = await api.getBookOfDay(token); // obtenemos recomendación
+            console.log("book of day response:", data);
+            setBookOfDay(data); // guardamos libro para luego en discover mostrar título, autor y cover
+        } catch (e) {
+            console.error(e);
+        } finally {
+            setBookOfDayLoading(false);
+        }
+    };
     // review
     // cargar reseña propia (GET /api/books/:bookId/review)
     const cargarReview = async (bookId) => {
@@ -604,6 +618,12 @@ export default function App() {
     }, [user]);
 
     useEffect(() => {
+        if (activeTab === "discover" && user) {
+            cargarBookOfDay();
+        }
+    }, [activeTab, user]);
+
+    useEffect(() => {
         if (selectedBook) {
             // cuando se abre el detalle de un libro → cargar sus notas
             cargarNotas(selectedBook.id);
@@ -760,8 +780,8 @@ export default function App() {
                         ACCENT={ACCENT}
                         MUTED={MUTED}
                         ghostBtn={ghostBtn}
-                        probarMe={probarMe}
-                        listarLibros={listarLibros}
+                        bookOfDay={bookOfDay}
+                        bookOfDayLoading={bookOfDayLoading}
                     />
                 )}
 
