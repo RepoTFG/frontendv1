@@ -151,7 +151,22 @@ export const api = {
 
         return authFetch(path, { token });
     },
+    // connect with a reader
+    getConnectReaderStatus: (token) => authFetch("/api/connect/status", { token }),
 
+    setConnectReaderOptIn: (token, payload) =>
+        authFetch("/api/connect/opt-in", {
+            token,
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload),
+        }),
+
+    connectReaderMatch: (token) =>
+        authFetch("/api/connect/match", {
+            token,
+            method: "POST",
+        }),
     // review
     getMyReview: (token, bookId) => authFetch(`/api/books/${bookId}/review`, { token }),
 

@@ -160,8 +160,91 @@ export default function Discover({ BORDER, CARD, ACCENT, MUTED, ghostBtn, bookOf
             setLoading(false);
         }
     };
+
     // toggle para conectar con lector anónimo (si participa o no)
     const [participate, setParticipate] = useState(false);
+    const [participateLoading, setParticipateLoading] = useState(false);
+    const [matchLoading, setMatchLoading] = useState(false);
+    const [matchError, setMatchError] = useState("");
+    const [matchData, setMatchData] = useState(null);
+
+    const loadConnectStatus = async () => {
+        try {
+            setParticipateLoading(true);
+            // si no hay user (logout), reseteamos y salimos
+            if (!auth.currentUser) {
+                setParticipate(false);
+                setMatchData(null);
+                setMatchError("");
+                return;
+            }
+            const token = await auth.currentUser.getIdToken();
+            const data = await api.getConnectReaderStatus(token);
+            // backend --> optIn: true/false
+            setParticipate(!!data?.optIn);
+        } catch (e) {
+            console.error(e);
+            // si falla dejamos toggle en false
+            setParticipate(false);
+        } finally {
+            setParticipateLoading(false);
+        }
+    };
+
+    const toggleParticipate = async () => {
+        const next = !participate;
+        try {
+            setParticipateLoading(true);
+            setMatchError("");
+            const token = await auth.currentUser.getIdToken();
+            await api.setConnectReaderOptIn(token, { optIn: next });
+            setParticipate(next);
+            if (!next) setMatchData(null);
+        } catch (e) {
+            alert(e.message || "Error actualizando participate");
+        } finally {
+            setParticipateLoading(false);
+        }
+    };
+
+    const runMatch = async () => {
+        try {
+            setMatchLoading(true);
+            setMatchError("");
+            const token = await auth.currentUser.getIdToken();
+            const data = await api.connectReaderMatch(token);
+            // match o match null con reason
+            setMatchData(data || null);
+        } catch (e) {
+            setMatchError(e.message || "Error buscando match");
+            setMatchData(null);
+        } finally {
+            setMatchLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        if (tab === "connect") {
+            loadConnectStatus();
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [tab]);
+
+    // recargar el estado de participate cuando cambie la sesión (login/logout/cambio de cuenta)
+    useEffect(() => {
+        const unsub = auth.onAuthStateChanged(() => {
+            if (tab === "connect") {
+                loadConnectStatus();
+            } else {
+                // si no estamos en connect, solo reseteamos UI local
+                setParticipate(false);
+                setMatchData(null);
+                setMatchError("");
+            }
+        });
+        return () => unsub();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [tab]);
 
     const toggleStyle = (on) => ({
         width: 44,
@@ -171,6 +254,8 @@ export default function Discover({ BORDER, CARD, ACCENT, MUTED, ghostBtn, bookOf
         background: on ? ACCENT : "#F6F3EF",
         position: "relative",
         cursor: "pointer",
+        opacity: participateLoading ? 0.6 : 1,
+        pointerEvents: participateLoading ? "none" : "auto",
     });
 
     const knobStyle = (on) => ({
@@ -184,6 +269,7 @@ export default function Discover({ BORDER, CARD, ACCENT, MUTED, ghostBtn, bookOf
         transition: "left 160ms ease",
         border: `1px solid ${BORDER}`,
     });
+
     // card para luego reusar: cover, título, subtítulo y opcional rightslot (emojis para feedback)
     const CardRow = ({ coverUrl, titleText, subtitleText, rightSlot }) => (
         <div
@@ -229,6 +315,13 @@ export default function Discover({ BORDER, CARD, ACCENT, MUTED, ghostBtn, bookOf
             {rightSlot ? <div style={{ display: "flex", gap: 8, alignItems: "center" }}>{rightSlot}</div> : null}
         </div>
     );
+
+    // normalizamos para que funcione tanto si viene {match:{...}} como si viene directo
+    const normalizedMatch = useMemo(() => {
+        if (!matchData) return null;
+        if (matchData.match) return matchData.match;
+        return matchData;
+    }, [matchData]);
 
     return (
         <div style={sectionWrap}>
@@ -454,8 +547,8 @@ export default function Discover({ BORDER, CARD, ACCENT, MUTED, ghostBtn, bookOf
                             role="button"
                             tabIndex={0}
                             style={toggleStyle(participate)}
-                            onClick={() => setParticipate((v) => !v)}
-                            onKeyDown={(e) => (e.key === "Enter" ? setParticipate((v) => !v) : null)}
+                            onClick={() => toggleParticipate()}
+                            onKeyDown={(e) => (e.key === "Enter" ? toggleParticipate() : null)}
                             aria-label="Participate"
                             title="Participate"
                         >
@@ -483,33 +576,90 @@ export default function Discover({ BORDER, CARD, ACCENT, MUTED, ghostBtn, bookOf
                                 </div>
 
                                 <div style={{ marginTop: 10, display: "flex", gap: 10, flexWrap: "wrap" }}>
-                                    <button type="button" style={ghostBtn}>
-                                        Search reader
+                                    <button
+                                        type="button"
+                                        style={ghostBtn}
+                                        onClick={runMatch}
+                                        disabled={matchLoading || participateLoading}
+                                    >
+                                        {matchLoading ? "Buscando..." : "Search reader"}
                                     </button>
-                                    <button type="button" style={ghostBtn}>
+                                    <button
+                                        type="button"
+                                        style={ghostBtn}
+                                        onClick={() => {
+                                            setMatchData(null);
+                                            setMatchError("");
+                                            runMatch();
+                                        }}
+                                        disabled={matchLoading || participateLoading}
+                                    >
                                         Search new reader
                                     </button>
                                 </div>
+
+                                {matchError ? (
+                                    <div style={{ marginTop: 10, color: MUTED, fontSize: 13 }}>
+                                        {`⚠️ ${matchError}`}
+                                    </div>
+                                ) : null}
+
+                                {/* si backend devuelve reason */}
+                                {matchData && matchData.reason && !normalizedMatch ? (
+                                    <div style={{ marginTop: 10, color: MUTED, fontSize: 13 }}>
+                                        {matchData.reason === "no_candidates"
+                                            ? "No hay candidatos todavía (prueba con otra cuenta activando Participate)."
+                                            : "No se ha encontrado match todavía."}
+                                    </div>
+                                ) : null}
                             </div>
 
-                            <div
-                                style={{
-                                    border: `1px solid ${BORDER}`,
-                                    borderRadius: 16,
-                                    padding: 12,
-                                    background: "white",
-                                }}
-                            >
-                                <div style={{ fontWeight: 900, color: ACCENT }}>Match found</div>
-                                <div style={{ marginTop: 6, color: MUTED, fontSize: 13 }}>
-                                    (Demo) Match: 86% · Shared genres · Shared mood
-                                </div>
+                            {normalizedMatch ? (
+                                <div
+                                    style={{
+                                        border: `1px solid ${BORDER}`,
+                                        borderRadius: 16,
+                                        padding: 12,
+                                        background: "white",
+                                    }}
+                                >
+                                    <div style={{ fontWeight: 900, color: ACCENT }}>Match found</div>
+                                    <div style={{ marginTop: 6, color: MUTED, fontSize: 13 }}>
+                                        Match: {typeof normalizedMatch.percent === "number" ? `${normalizedMatch.percent}%` : "—"}
+                                        {Array.isArray(normalizedMatch.sharedGenres) && normalizedMatch.sharedGenres.length
+                                            ? ` · Shared genres: ${normalizedMatch.sharedGenres.slice(0, 3).join(", ")}`
+                                            : ""}
+                                        {normalizedMatch.sharedMood
+                                            ? ` · Shared mood: ${normalizedMatch.sharedMood}`
+                                            : ""}
+                                    </div>
 
-                                <div style={{ marginTop: 10, display: "grid", gap: 10 }}>
-                                    <CardRow coverUrl="" titleText="Their recommendation 1" subtitleText="Reason…" />
-                                    <CardRow coverUrl="" titleText="Their recommendation 2" subtitleText="Reason…" />
+                                    <div style={{ marginTop: 10, display: "grid", gap: 10 }}>
+                                        {(Array.isArray(normalizedMatch.recommendations) ? normalizedMatch.recommendations : [])
+                                            .slice(0, 5)
+                                            .map((r, idx) => {
+                                                const cover = r.coverId
+                                                    ? `https://covers.openlibrary.org/b/id/${r.coverId}-M.jpg`
+                                                    : (r.coverUrl || "");
+                                                const subtitleText = `${r.author || "Autor/a"}${r.reason ? ` · ${r.reason}` : ""}`;
+                                                return (
+                                                    <CardRow
+                                                        key={(r.workKey || r.key || "") + idx}
+                                                        coverUrl={cover}
+                                                        titleText={r.title || `Recommendation ${idx + 1}`}
+                                                        subtitleText={subtitleText}
+                                                    />
+                                                );
+                                            })}
+
+                                        {(!normalizedMatch.recommendations || normalizedMatch.recommendations.length === 0) ? (
+                                            <div style={{ color: MUTED, fontSize: 13 }}>
+                                                No hay recomendaciones todavía (prueba Search new reader).
+                                            </div>
+                                        ) : null}
+                                    </div>
                                 </div>
-                            </div>
+                            ) : null}
                         </div>
                     )}
                 </div>
