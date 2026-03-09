@@ -52,6 +52,14 @@ export default function Diary({ books, setSelectedBook, styles }) {
     const [editChapter, setEditChapter] = useState("");
     const [editQuote, setEditQuote] = useState("");
     const [editMood, setEditMood] = useState("");
+    const [editOpen, setEditOpen] = useState(false);
+    // IA companion
+    const [aiLoadingId, setAiLoadingId] = useState(null);
+    const [savingAnswersId, setSavingAnswersId] = useState(null);
+    const [draftAnswers, setDraftAnswers] = useState({});
+    // para hacer la ux más minimalista
+    const [expandedId, setExpandedId] = useState(null);
+    const [menuOpenId, setMenuOpenId] = useState(null);
 
     // map para resolver bookId --> info libro
     const bookById = useMemo(() => {
@@ -79,7 +87,6 @@ export default function Diary({ books, setSelectedBook, styles }) {
                 bookId: bookId || undefined,
                 limit: 300,
             });
-
 
             let out = Array.isArray(data) ? data : [];
 
@@ -158,6 +165,30 @@ export default function Diary({ books, setSelectedBook, styles }) {
         fontSize: 12,
         opacity: disabled ? 0.45 : 1,
     });
+
+    const subtleBtn = {
+        padding: "8px 10px",
+        borderRadius: 12,
+        border: `1px solid ${BORDER}`,
+        background: "white",
+        color: ACCENT,
+        cursor: "pointer",
+        fontWeight: 800,
+        fontSize: 12,
+    };
+
+    const menuBtn = {
+        width: 34,
+        height: 34,
+        borderRadius: 12,
+        border: `1px solid ${BORDER}`,
+        background: "white",
+        color: ACCENT,
+        cursor: "pointer",
+        fontWeight: 900,
+        fontSize: 18,
+        lineHeight: 1,
+    };
 
     const openNewEntry = () => {
         // por defecto selecciona el libro filtrado si hay, si no el primero
@@ -241,6 +272,8 @@ export default function Diary({ books, setSelectedBook, styles }) {
         setEditChapter(n.chapter || "");
         setEditQuote(n.quote || "");
         setEditMood(n.mood || "");
+        setEditOpen(true);
+        setMenuOpenId(null);
     };
 
     const cancelarEditarNota = () => {
@@ -249,6 +282,7 @@ export default function Diary({ books, setSelectedBook, styles }) {
         setEditChapter("");
         setEditQuote("");
         setEditMood("");
+        setEditOpen(false);
     };
 
     const guardarEdicionNota = async (noteId) => {
@@ -267,6 +301,12 @@ export default function Diary({ books, setSelectedBook, styles }) {
                 text: editText.trim(),
                 quote: editQuote || "",
                 mood: editMood || "",
+            });
+
+            setDraftAnswers((prev) => {
+                const next = { ...prev };
+                delete next[noteId];
+                return next;
             });
 
             cancelarEditarNota();
@@ -289,10 +329,124 @@ export default function Diary({ books, setSelectedBook, styles }) {
 
             if (editingNoteId === noteId) cancelarEditarNota();
 
+            setDraftAnswers((prev) => {
+                const next = { ...prev };
+                delete next[noteId];
+                return next;
+            });
+
+            if (expandedId === noteId) setExpandedId(null);
+            if (menuOpenId === noteId) setMenuOpenId(null);
+
             await load();
         } catch (e) {
             alert(e.message || "Error borrando la nota");
         }
+    };
+// AI companion
+// reflexiones sobre notas
+    const reflectNote = async (n) => {
+        try {
+            if (!n?.id) return;
+
+            // si ya está abierta --> cerramos tanto tarjeta expandida como menú de opciones
+            if (expandedId === n.id) {
+                setExpandedId(null);
+                setMenuOpenId(null);
+                return;
+            }
+            setAiLoadingId(n.id); // marcamos como cargando
+            const token = await auth.currentUser.getIdToken();
+            // generamos solo si no existe todavía
+            if (!Array.isArray(n.aiCompanion?.questions) || n.aiCompanion.questions.length === 0) {
+                await api.generateNoteCompanion(token, n.id); // llamada backend para crear preguntas IA
+                await load();
+            }
+            // abrimos la nota
+            setExpandedId(n.id);
+            setMenuOpenId(null);
+        } catch (e) {
+            alert(e.message || "Error generando la reflexión");
+        } finally {
+            setAiLoadingId(null);
+        }
+    };
+    // obtenemos las 3 respuestas
+    const getAnswersForNote = (n) => {
+        const fromDraft = draftAnswers[n.id]; // buscamos si habían respuestas
+        if (Array.isArray(fromDraft)) return fromDraft;
+
+        const saved = Array.isArray(n.aiCompanion?.answers) ? n.aiCompanion.answers : [];
+        return [
+            saved[0] || "",
+            saved[1] || "",
+            saved[2] || "",
+        ];
+    };
+    // actualizamos respuesta concreta del borrador
+    const updateDraftAnswer = (noteId, idx, value, noteObj) => {
+        setDraftAnswers((prev) => { // usando versión anterior
+            // si hay borrador para esa nota --> versión anterior
+            // si no --> partir de respuestas guardadas
+            const current = Array.isArray(prev[noteId])
+                ? prev[noteId]
+                : [
+                    noteObj?.aiCompanion?.answers?.[0] || "",
+                    noteObj?.aiCompanion?.answers?.[1] || "",
+                    noteObj?.aiCompanion?.answers?.[2] || "",
+                ];
+            const next = [...current];
+            next[idx] = value; // cambiamos solo la respuesta que corresponde al índice
+            return { //actualizamos drafts
+                ...prev,
+                [noteId]: next,
+            };
+        });
+    };
+    // guardamos al backend las respuestas
+    const saveCompanionAnswers = async (noteId, noteObj) => {
+        try {
+            if (!noteId) return;
+
+            setSavingAnswersId(noteId);
+            const token = await auth.currentUser.getIdToken();
+            const answers = getAnswersForNote(noteObj);
+            // enviamos:
+            await api.updateNoteCompanion(token, noteId, {
+                answers,
+            });
+
+            await load();
+        } catch (e) {
+            alert(e.message || "Error guardando las reflexiones");
+        } finally {
+            setSavingAnswersId(null);
+        }
+    };
+    // obtenemos texto de la nota como preview cuando la nota está cerrada
+    const getPreviewText = (n) => {
+        const base = typeof n.text === "string" ? n.text.trim() : "";
+        if (!base) return "";
+        return base.length > 180 ? `${base.slice(0, 180)}…` : base; // si texto largo --> cortar a 180 caracteres
+    };
+
+    const openBook = (n) => {
+        const b = bookById.get(String(n.bookId));
+
+        const fallbackBook = {
+            id: n.bookId,
+            title: n.bookTitle || "Libro",
+            author: n.bookAuthor || "",
+            cover: { url: n.bookCoverUrl || "" },
+            status: "to_read",
+            shelves: [],
+            openLibrary: { workKey: "", authorKey: "" },
+            readCount: 0,
+            _deleted: true,
+        };
+
+        setSelectedBook(b || fallbackBook);
+        setMenuOpenId(null);
     };
 
     return (
@@ -456,39 +610,36 @@ export default function Diary({ books, setSelectedBook, styles }) {
                         const b = bookById.get(String(n.bookId));
                         const title = b?.title || n.bookTitle || "Libro";
                         const author = b?.author || n.bookAuthor || "";
-
-                        // si el libro no existe, mostrar igualmente info
-                        const fallbackBook = {
-                            id: n.bookId,
-                            title: n.bookTitle || "Libro",
-                            author: n.bookAuthor || "",
-                            cover: { url: n.bookCoverUrl || "" },
-                            status: "to_read",
-                            shelves: [],
-                            openLibrary: { workKey: "", authorKey: "" },
-                            readCount: 0,
-                            _deleted: true,
-                        };
-
-                        const bookToOpen = b || fallbackBook;
+                        const companion = n.aiCompanion || null;
+                        const hasCompanion = Array.isArray(companion?.questions) && companion.questions.length > 0;
+                        const answers = getAnswersForNote(n);
+                        const answeredCount = answers.filter((x) => String(x || "").trim()).length;
+                        const expanded = expandedId === n.id;
 
                         return (
                             <div
                                 key={n.id}
-                                onClick={() => setSelectedBook(bookToOpen)}
-                                role="button"
-                                tabIndex={0}
                                 style={{
                                     textAlign: "left",
-                                    border: `1px solid ${BORDER}`,
+                                    border: `1px solid ${expanded ? ACCENT : BORDER}`,
                                     borderRadius: 18,
                                     background: CARD,
                                     padding: 14,
-                                    cursor: "pointer",
+                                    transition: "border-color 120ms ease",
                                 }}
                             >
-                                <div style={{ display: "flex", justifyContent: "space-between", gap: 10 }}>
-                                    <div style={{ minWidth: 0 }}>
+                                <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "flex-start" }}>
+                                    <div
+                                        role="button"
+                                        tabIndex={0}
+                                        onClick={() => setExpandedId((prev) => prev === n.id ? null : n.id)}
+                                        onKeyDown={(e) => {
+                                            if (e.key === "Enter" || e.key === " ") {
+                                                setExpandedId((prev) => prev === n.id ? null : n.id);
+                                            }
+                                        }}
+                                        style={{ minWidth: 0, flex: 1, cursor: "pointer" }}
+                                    >
                                         <div
                                             style={{
                                                 fontWeight: 900,
@@ -500,148 +651,189 @@ export default function Diary({ books, setSelectedBook, styles }) {
                                         >
                                             {title}
                                         </div>
-                                        {author && (
-                                            <div style={{ marginTop: 2, color: MUTED, fontSize: 12 }}>
-                                                {author}
+
+                                        <div style={{ marginTop: 2, color: MUTED, fontSize: 12 }}>
+                                            {[author, n.createdAt ? new Date(n.createdAt).toLocaleDateString() : ""].filter(Boolean).join(" · ")}
+                                        </div>
+
+                                        {!expanded && (
+                                            <div style={{ marginTop: 8, color: MUTED, fontSize: 13, lineHeight: 1.45, whiteSpace: "pre-wrap" }}>
+                                                {getPreviewText(n)}
                                             </div>
                                         )}
                                     </div>
 
-                                    <div style={{ fontSize: 11, color: MUTED, whiteSpace: "nowrap" }}>
-                                        {n.createdAt ? new Date(n.createdAt).toLocaleDateString() : ""}
+                                    <div style={{ position: "relative", display: "flex", gap: 8, alignItems: "center", flexShrink: 0 }}>
+                                        <button
+                                            type="button"
+                                            onClick={() => reflectNote(n)}
+                                            style={subtleBtn}
+                                            title="Abrir AI companion"
+                                            disabled={aiLoadingId === n.id}
+                                        >
+                                            {aiLoadingId === n.id
+                                                ? "Thinking..."
+                                                : expanded
+                                                    ? "Close companion"
+                                                    : hasCompanion
+                                                        ? `AI companion · ${answeredCount}/3`
+                                                        : "AI companion"}
+                                        </button>
+
+                                        <button
+                                            type="button"
+                                            onClick={() => setMenuOpenId((prev) => prev === n.id ? null : n.id)}
+                                            style={menuBtn}
+                                            title="Más opciones"
+                                        >
+                                            ⋯
+                                        </button>
+
+                                        {menuOpenId === n.id && (
+                                            <div
+                                                style={{
+                                                    position: "absolute",
+                                                    top: 40,
+                                                    right: 0,
+                                                    minWidth: 160,
+                                                    background: "white",
+                                                    border: `1px solid ${BORDER}`,
+                                                    borderRadius: 14,
+                                                    boxShadow: "0 8px 24px rgba(0,0,0,0.08)",
+                                                    padding: 6,
+                                                    display: "grid",
+                                                    gap: 4,
+                                                    zIndex: 5,
+                                                }}
+                                            >
+                                                <button
+                                                    type="button"
+                                                    onClick={() => openBook(n)}
+                                                    style={{
+                                                        ...subtleBtn,
+                                                        width: "100%",
+                                                        textAlign: "left",
+                                                        borderRadius: 10,
+                                                    }}
+                                                >
+                                                    Open book
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => empezarEditarNota(n)}
+                                                    style={{
+                                                        ...subtleBtn,
+                                                        width: "100%",
+                                                        textAlign: "left",
+                                                        borderRadius: 10,
+                                                    }}
+                                                >
+                                                    Edit note
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => borrarNota(n.id)}
+                                                    style={{
+                                                        ...subtleBtn,
+                                                        width: "100%",
+                                                        textAlign: "left",
+                                                        borderRadius: 10,
+                                                    }}
+                                                >
+                                                    Delete
+                                                </button>
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
 
                                 {/* mostramos mood si existe  */}
                                 {typeof n.mood === "string" && n.mood.trim() && (
-                                    <div style={{ marginTop: 10, fontSize: 12, color: MUTED, fontWeight: 800 }}>
-                                        Mood: <span style={{ color: ACCENT }}>{moodLabel(n.mood)}</span>
+                                    <div style={{ marginTop: 10, display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12, color: MUTED, fontWeight: 800 }}>
+                                        <span>Mood:</span>
+                                        <span style={{ color: ACCENT }}>{moodLabel(n.mood)}</span>
                                     </div>
                                 )}
 
-                                {editingNoteId === n.id ? (
-                                    // si se está editando la nota --> mostrar como input
-                                    <div style={{ display: "grid", gap: 10, marginTop: 12 }}>
-                                        {/* mood al editar la nota (opcional) */}
-                                        <div style={{ display: "grid", gap: 6 }}>
-                                            <div style={{ fontSize: 12, color: MUTED, fontWeight: 800 }}>
-                                                Mood (opcional)
-                                            </div>
-                                            <select
-                                                value={editMood}
-                                                onChange={(e) => setEditMood(e.target.value)}
-                                                style={inputStyle}
-                                                title="Actualizar mood de la nota"
-                                            >
-                                                <option value="">—</option>
-                                                {MOODS.filter((m) => m !== "").map((m) => (
-                                                    <option key={m} value={m}>
-                                                        {m}
-                                                    </option>
-                                                ))}
-                                            </select>
-                                        </div>
-
-                                        <input
-                                            value={editChapter}
-                                            onChange={(e) => setEditChapter(e.target.value)}
-                                            placeholder="Capítulo / parte (opcional)"
-                                            style={inputStyle}
-                                        />
-
-                                        <textarea
-                                            value={editText}
-                                            onChange={(e) => setEditText(e.target.value)}
-                                            rows={4}
-                                            style={{ ...inputStyle, resize: "vertical" }}
-                                        />
-
-                                        <input
-                                            value={editQuote}
-                                            onChange={(e) => setEditQuote(e.target.value)}
-                                            placeholder="Frase destacada (opcional)"
-                                            style={inputStyle}
-                                        />
-
-                                        <div style={{ display: "flex", gap: 8 }}>
-                                            <button
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    guardarEdicionNota(n.id);
-                                                }}
-                                                style={{
-                                                    ...primaryBtn,
-                                                    width: "auto",
-                                                    flex: 1,
-                                                }}
-                                                type="button"
-                                            >
-                                                ✅ Guardar
-                                            </button>
-                                            <button
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    cancelarEditarNota();
-                                                }}
-                                                style={{
-                                                    ...ghostBtn,
-                                                    width: "auto",
-                                                    flex: 1,
-                                                }}
-                                                type="button"
-                                            >
-                                                ✖ Cancelar
-                                            </button>
-                                        </div>
-                                    </div>
-                                ) : (
+                                {expanded && (
                                     <>
                                         {n.chapter && (
-                                            <div style={{ marginTop: 10, fontSize: 12, color: MUTED, fontWeight: 800 }}>
+                                            <div style={{ marginTop: 12, fontSize: 12, color: MUTED, fontWeight: 800 }}>
                                                 {n.chapter}
                                             </div>
                                         )}
 
-                                        <div style={{ marginTop: 8, color: ACCENT, whiteSpace: "pre-wrap" }}>
+                                        <div style={{ marginTop: 8, color: ACCENT, whiteSpace: "pre-wrap", lineHeight: 1.55 }}>
                                             {n.text}
                                         </div>
 
                                         {n.quote && (
-                                            <div style={{ marginTop: 8, fontStyle: "italic", color: MUTED }}>
+                                            <div style={{ marginTop: 10, fontStyle: "italic", color: MUTED, lineHeight: 1.5 }}>
                                                 “{n.quote}”
                                             </div>
                                         )}
 
-                                        <div style={{ marginTop: 10, display: "flex", gap: 8 }}>
-                                            <button
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    empezarEditarNota(n);
-                                                }}
+                                        {hasCompanion && (
+                                            <div
+                                                onClick={(e) => e.stopPropagation()}
                                                 style={{
-                                                    ...ghostBtn,
-                                                    width: "auto",
-                                                    flex: 1,
+                                                    marginTop: 12,
+                                                    border: `1px solid ${BORDER}`,
+                                                    borderRadius: 14,
+                                                    background: SOFT,
+                                                    padding: 12,
+                                                    display: "grid",
+                                                    gap: 10,
+                                                    cursor: "default",
                                                 }}
-                                                type="button"
                                             >
-                                                Editar
-                                            </button>
-                                            <button
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    borrarNota(n.id);
-                                                }}
-                                                style={{
-                                                    ...ghostBtn,
-                                                    width: "auto",
-                                                    flex: 1,
-                                                }}
-                                                type="button"
-                                            >
-                                                Borrar
-                                            </button>
-                                        </div>
+                                                <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "center" }}>
+                                                    <div style={{ fontWeight: 900, color: ACCENT, fontSize: 13 }}>
+                                                        Reading companion
+                                                    </div>
+
+                                                    <div style={{ color: MUTED, fontSize: 12, fontWeight: 800 }}>
+                                                        {answeredCount}/3 answered
+                                                    </div>
+                                                </div>
+
+                                                {companion.intro ? (
+                                                    <div style={{ color: MUTED, fontSize: 13 }}>
+                                                        {companion.intro}
+                                                    </div>
+                                                ) : null}
+
+                                                <div style={{ display: "grid", gap: 10 }}>
+                                                    {(companion.questions || []).map((question, idx) => (
+                                                        <div key={idx} style={{ display: "grid", gap: 6 }}>
+                                                            <div style={{ color: ACCENT, fontSize: 14, lineHeight: 1.45, fontWeight: 800 }}>
+                                                                {idx + 1}. {question}
+                                                            </div>
+
+                                                            <textarea
+                                                                value={answers[idx] || ""}
+                                                                onChange={(e) => updateDraftAnswer(n.id, idx, e.target.value, n)}
+                                                                placeholder="Write your reflection..."
+                                                                rows={3}
+                                                                style={{ ...inputStyle, resize: "vertical", background: CARD }}
+                                                            />
+                                                        </div>
+                                                    ))}
+                                                </div>
+
+                                                <button
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        saveCompanionAnswers(n.id, n);
+                                                    }}
+                                                    style={primaryBtn}
+                                                    type="button"
+                                                    disabled={savingAnswersId === n.id}
+                                                >
+                                                    {savingAnswersId === n.id ? "Saving..." : "Save reflections"}
+                                                </button>
+                                            </div>
+                                        )}
                                     </>
                                 )}
                             </div>
@@ -836,6 +1028,110 @@ export default function Diary({ books, setSelectedBook, styles }) {
                                     </div>
                                 </>
                             )}
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* modal editar nota */}
+            {editOpen && (
+                <div
+                    onClick={cancelarEditarNota}
+                    style={{
+                        position: "fixed",
+                        inset: 0,
+                        background: "rgba(0,0,0,0.35)",
+                        display: "flex",
+                        justifyContent: "center",
+                        alignItems: "flex-end",
+                        padding: 16,
+                        zIndex: 70,
+                    }}
+                >
+                    <div
+                        onClick={(e) => e.stopPropagation()}
+                        style={{
+                            width: "100%",
+                            maxWidth: 520,
+                            borderRadius: 18,
+                            border: `1px solid ${BORDER}`,
+                            background: CARD,
+                            padding: 14,
+                        }}
+                    >
+                        <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "center" }}>
+                            <div style={{ fontWeight: 900, color: ACCENT }}>Edit note</div>
+                            <button onClick={cancelarEditarNota} style={{ ...ghostBtn, width: "auto" }} type="button">
+                                Cerrar
+                            </button>
+                        </div>
+
+                        <div style={{ display: "grid", gap: 10, marginTop: 12 }}>
+                            {/* mood al editar la nota (opcional) */}
+                            <div style={{ display: "grid", gap: 6 }}>
+                                <div style={{ fontSize: 12, color: MUTED, fontWeight: 800 }}>
+                                    Mood (opcional)
+                                </div>
+                                <select
+                                    value={editMood}
+                                    onChange={(e) => setEditMood(e.target.value)}
+                                    style={inputStyle}
+                                    title="Actualizar mood de la nota"
+                                >
+                                    <option value="">—</option>
+                                    {MOODS.filter((m) => m !== "").map((m) => (
+                                        <option key={m} value={m}>
+                                            {m}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            <input
+                                value={editChapter}
+                                onChange={(e) => setEditChapter(e.target.value)}
+                                placeholder="Capítulo / parte (opcional)"
+                                style={inputStyle}
+                            />
+
+                            <textarea
+                                value={editText}
+                                onChange={(e) => setEditText(e.target.value)}
+                                rows={5}
+                                style={{ ...inputStyle, resize: "vertical" }}
+                            />
+
+                            <input
+                                value={editQuote}
+                                onChange={(e) => setEditQuote(e.target.value)}
+                                placeholder="Frase destacada (opcional)"
+                                style={inputStyle}
+                            />
+
+                            <div style={{ display: "flex", gap: 8 }}>
+                                <button
+                                    onClick={() => guardarEdicionNota(editingNoteId)}
+                                    style={{
+                                        ...primaryBtn,
+                                        width: "auto",
+                                        flex: 1,
+                                    }}
+                                    type="button"
+                                >
+                                    Save changes
+                                </button>
+                                <button
+                                    onClick={cancelarEditarNota}
+                                    style={{
+                                        ...ghostBtn,
+                                        width: "auto",
+                                        flex: 1,
+                                    }}
+                                    type="button"
+                                >
+                                    Cancel
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>

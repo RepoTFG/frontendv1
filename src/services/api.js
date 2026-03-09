@@ -188,10 +188,33 @@ export const api = {
     // reviews todas (publicas y privadas)
     getMyReviews: (token) => authFetch("/api/reviews/mine", { token }),
     // mood recommendation
-    discoverMood: (token, payload) =>
-        authFetch("/api/discover/mood", {
+    //discoverMood: (token, payload) =>
+    //    authFetch("/api/discover/mood", {
+    //        token,
+    //        method: "POST",
+    //        headers: { "Content-Type": "application/json" },
+    //        body: JSON.stringify(payload || {}),
+    //    }),
+    // AI companion
+    // enviar nota backend para crear reflexión
+    readingCompanionReflect: (token, payload) =>
+        authFetch("/api/ai/reflection", {
             token,
             method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload || {}),
+        }),
+    // generar reflexión nota en concreto (para que sea persistente)
+    generateNoteCompanion: (token, noteId) =>
+        authFetch(`/api/notes/${noteId}/ai-companion`, {
+            token,
+            method: "POST",
+        }),
+    // guardamos respuestas del lector a las preguntas creadas por IA
+    updateNoteCompanion: (token, noteId, payload) =>
+        authFetch(`/api/notes/${noteId}/ai-companion`, {
+            token,
+            method: "PATCH", // actualizamos
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(payload || {}),
         }),
