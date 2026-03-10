@@ -794,7 +794,7 @@ export default function App() {
                         crearShelf={crearShelf}
                         inputStyle={inputStyle}
                         primaryBtn={primaryBtn}
-                        styles={{styles}}
+                        styles={styles}
                     />
                 )}
             </div>
