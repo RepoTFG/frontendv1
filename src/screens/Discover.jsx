@@ -86,6 +86,8 @@ export default function Discover({ BORDER, CARD, ACCENT, MUTED, ghostBtn, bookOf
     // book of the day AI
     const [bookOfDayAI, setBookOfDayAI] = useState(null);
     const [bookOfDayAILoading, setBookOfDayAILoading] = useState(false);
+    const [bookOfDayAIFeedback, setBookOfDayAIFeedback] = useState(0); // 1 like, -1 dislike, 0 none
+    const [bookOfDayAIFeedbackLoading, setBookOfDayAIFeedbackLoading] = useState(false);
 
     const bookOfDayAIData = useMemo(() => {
         const titleText =
@@ -124,6 +126,16 @@ export default function Discover({ BORDER, CARD, ACCENT, MUTED, ghostBtn, bookOf
             console.error(e);
         }
     };
+    // cargamos feedback book of the day AI
+    const loadAIFeedback = async () => {
+        try {
+            const token = await auth.currentUser.getIdToken();
+            const data = await api.getBookOfDayAIFeedback(token);
+            setBookOfDayAIFeedback(data?.value || 0);
+        } catch (e) {
+            console.error(e);
+        }
+    };
     // cargamos book of the day AI
     const loadBookOfDayAI = async () => {
         try {
@@ -151,13 +163,33 @@ export default function Discover({ BORDER, CARD, ACCENT, MUTED, ghostBtn, bookOf
             setBookOfDayFeedbackLoading(false);
         }
     };
+    // enviamos feedback AI: activamos loading, haciendo post al backend (1 o -1) y actualizamos estado
+    const sendAIFeedback = async (value) => {
+        try {
+            setBookOfDayAIFeedbackLoading(true);
+            const token = await auth.currentUser.getIdToken();
+            await api.sendBookOfDayAIFeedback(token, value);
+            setBookOfDayAIFeedback(value);
+        } catch (e) {
+            alert(e.message || "Error guardando feedback AI");
+        } finally {
+            setBookOfDayAIFeedbackLoading(false);
+        }
+    };
     // cuando cambie bookOfDay o Loading, revisamos si ya tiene un libro y que ya no esté cargando
     useEffect(() => {
         if (bookOfDay && !bookOfDayLoading) {
             loadFeedback();
             loadBookOfDayAI();
+            loadAIFeedback();
         }
     }, [bookOfDay, bookOfDayLoading]);
+
+    useEffect(() => {
+        if (bookOfDayAI) {
+            loadAIFeedback();
+        }
+    }, [bookOfDayAI]);
 
     const moods = useMemo(
         () => [
@@ -444,6 +476,29 @@ export default function Discover({ BORDER, CARD, ACCENT, MUTED, ghostBtn, bookOf
                                     coverUrl={bookOfDayAIData.book.coverUrl}
                                     titleText={bookOfDayAIData.book.title}
                                     subtitleText={bookOfDayAIData.book.author}
+                                    rightSlot={
+                                        <>
+                                            {/* like/dislike */}
+                                            <button
+                                                type="button"
+                                                style={pill(bookOfDayAIFeedback === 1)}
+                                                title="Buena recomendación AI"
+                                                disabled={bookOfDayAIFeedbackLoading || bookOfDayAILoading}
+                                                onClick={() => sendAIFeedback(1)}
+                                            >
+                                                👍
+                                            </button>
+                                            <button
+                                                type="button"
+                                                style={pill(bookOfDayAIFeedback === -1)}
+                                                title="Mala recomendación AI"
+                                                disabled={bookOfDayAIFeedbackLoading || bookOfDayAILoading}
+                                                onClick={() => sendAIFeedback(-1)}
+                                            >
+                                                👎
+                                            </button>
+                                        </>
+                                    }
                                 />
                             </div>
                         ) : null}

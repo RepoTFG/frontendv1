@@ -230,6 +230,16 @@ export const api = {
             body: JSON.stringify({ value }),
         }),
     getBookOfDayAI: (token) => authFetch("/api/discover/book-of-day-ai", { token }),
+
+    getBookOfDayAIFeedback: (token) => authFetch("/api/discover/book-of-day-ai/feedback", { token }),
+
+    sendBookOfDayAIFeedback: (token, value) =>
+        authFetch("/api/discover/book-of-day-ai/feedback", {
+            token,
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ value }),
+        }),
     // shelves
     listShelves: (token) => authFetch("/api/shelves", { token }),
 
