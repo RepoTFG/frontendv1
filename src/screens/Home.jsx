@@ -282,20 +282,25 @@ export default function Home({
 
                                                     <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
                                                         {customShelves.map((s) => {
+                                                            const shelfName = typeof s === "string" ? s : s?.name || "";
+                                                            const shelfKey = typeof s === "string" ? s : s?.id || shelfName;
+
+                                                            if (!shelfName) return null;
+
                                                             // si el libro ya pertenece a esa estantería -> estado activo (igual que BookDetail)
                                                             const active =
                                                                 !!existingBook &&
                                                                 Array.isArray(existingBook.shelves) &&
-                                                                existingBook.shelves.includes(s);
+                                                                existingBook.shelves.includes(shelfName);
 
                                                             return (
                                                                 <button
-                                                                    key={s}
+                                                                    key={shelfKey}
                                                                     type="button"
                                                                     onClick={() => {
                                                                         // si el libro existe -> toggle real (igual que detalle libro)
                                                                         if (existingBook?.id) {
-                                                                            toggleBookShelf(existingBook.id, s);
+                                                                            toggleBookShelf(existingBook.id, shelfName);
                                                                             setResultsOpen(false);
                                                                             return;
                                                                         }
@@ -303,7 +308,7 @@ export default function Home({
                                                                         // si NO existe -> lo creamos ya con esa shelf (y status por defecto)
                                                                         addFromResult(doc, {
                                                                             status: addStatusByKey[doc.key] || "to_read",
-                                                                            shelves: [s],
+                                                                            shelves: [shelfName],
                                                                         });
 
                                                                         setResultsOpen(false);
@@ -320,7 +325,7 @@ export default function Home({
                                                                     }}
                                                                     title={active ? "Quitar de esta shelf" : "Añadir a esta shelf"}
                                                                 >
-                                                                    {s}
+                                                                    {shelfName}
                                                                 </button>
                                                             );
                                                         })}

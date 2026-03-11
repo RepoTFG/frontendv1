@@ -2,7 +2,21 @@ import { useEffect, useMemo, useState } from "react";
 import { auth } from "../firebase";
 import { api } from "../services/api";
 
-export default function Discover({ BORDER, CARD, ACCENT, MUTED, ghostBtn, bookOfDay, bookOfDayLoading }) {
+export default function Discover({
+                                     BORDER,
+                                     CARD,
+                                     ACCENT,
+                                     MUTED,
+                                     ghostBtn,
+                                     bookOfDay,
+                                     bookOfDayLoading,
+                                     books,
+                                     customShelves,
+                                     addFromResult,
+                                     toggleBookShelf,
+                                     addStatusByKey,
+                                     setAddStatusByKey,
+                                 }) {
     // estilos
     const sectionWrap = {
         border: `1px solid ${BORDER}`,
@@ -116,6 +130,84 @@ export default function Discover({ BORDER, CARD, ACCENT, MUTED, ghostBtn, bookOf
             },
         };
     }, [bookOfDayAI]);
+
+    const bookOfDayDoc = useMemo(() => {
+        if (!bookOfDayData?.book?.title) return null;
+
+        const workKey =
+            bookOfDay?.openLibrary?.workKey ||
+            bookOfDay?.book?.openLibrary?.workKey ||
+            "";
+
+        const coverId =
+            bookOfDay?.openLibrary?.coverId ??
+            bookOfDay?.book?.openLibrary?.coverId ??
+            null;
+
+        return {
+            key: workKey || `bod-${bookOfDayData.book.title}-${bookOfDayData.book.author}`,
+            title: bookOfDayData.book.title,
+            author_name: [bookOfDayData.book.author || ""],
+            cover_i: coverId,
+        };
+    }, [bookOfDay, bookOfDayData]);
+
+    const bookOfDayAIDoc = useMemo(() => {
+        if (!bookOfDayAIData?.book?.title) return null;
+
+        const workKey =
+            bookOfDayAI?.openLibrary?.workKey ||
+            "";
+
+        const coverId =
+            bookOfDayAI?.openLibrary?.coverId ??
+            null;
+
+        return {
+            key: workKey || `bod-ai-${bookOfDayAIData.book.title}-${bookOfDayAIData.book.author}`,
+            title: bookOfDayAIData.book.title,
+            author_name: [bookOfDayAIData.book.author || ""],
+            cover_i: coverId,
+        };
+    }, [bookOfDayAI, bookOfDayAIData]);
+
+    const existingBookOfDay = useMemo(() => {
+        if (!bookOfDayDoc) return null;
+
+        const byCover = bookOfDayDoc.cover_i
+            ? books.find((b) => b?.cover?.openLibraryCoverId === bookOfDayDoc.cover_i)
+            : null;
+
+        const titleNormalized = (bookOfDayDoc.title || "").trim().toLowerCase();
+        const authorNormalized = ((bookOfDayDoc.author_name && bookOfDayDoc.author_name[0]) || "").trim().toLowerCase();
+
+        const byText = books.find((b) => {
+            const bt = (b.title || "").trim().toLowerCase();
+            const ba = (b.author || "").trim().toLowerCase();
+            return bt === titleNormalized && ba === authorNormalized;
+        });
+
+        return byCover || byText || null;
+    }, [bookOfDayDoc, books]);
+
+    const existingBookOfDayAI = useMemo(() => {
+        if (!bookOfDayAIDoc) return null;
+
+        const byCover = bookOfDayAIDoc.cover_i
+            ? books.find((b) => b?.cover?.openLibraryCoverId === bookOfDayAIDoc.cover_i)
+            : null;
+
+        const titleNormalized = (bookOfDayAIDoc.title || "").trim().toLowerCase();
+        const authorNormalized = ((bookOfDayAIDoc.author_name && bookOfDayAIDoc.author_name[0]) || "").trim().toLowerCase();
+
+        const byText = books.find((b) => {
+            const bt = (b.title || "").trim().toLowerCase();
+            const ba = (b.author || "").trim().toLowerCase();
+            return bt === titleNormalized && ba === authorNormalized;
+        });
+
+        return byCover || byText || null;
+    }, [bookOfDayAIDoc, books]);
     // cargamos feedback: pidiendo token y llamamos a endpoint GET actualizando el estado
     const loadFeedback = async () => {
         try {
@@ -393,6 +485,131 @@ export default function Discover({ BORDER, CARD, ACCENT, MUTED, ghostBtn, bookOf
         </div>
     );
 
+    const StatusPicker = ({ doc, existingBook }) => {
+        if (!doc) return null;
+
+        const options = [
+            { key: "to_read", label: "Want to read" },
+            { key: "reading", label: "Currently reading" },
+            { key: "paused", label: "Interrupted" },
+            { key: "finished", label: "Finished" },
+        ];
+
+        return (
+            <div style={{ marginTop: 10 }}>
+                <div
+                    style={{
+                        fontSize: 12,
+                        color: MUTED,
+                        fontWeight: 800,
+                        marginBottom: 8,
+                    }}
+                >
+                    Guardar en...
+                </div>
+
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                    {options.map((opt) => {
+                        const active = !!existingBook && existingBook.status === opt.key;
+
+                        return (
+                            <button
+                                key={opt.key}
+                                type="button"
+                                onClick={() => {
+                                    if (existingBook?.id) {
+                                        const nextStatus = existingBook.status === opt.key ? "" : opt.key;
+                                        addFromResult(doc, { status: nextStatus });
+                                        return;
+                                    }
+
+                                    addFromResult(doc, {
+                                        status: opt.key,
+                                    });
+                                }}
+                                style={{
+                                    padding: "8px 10px",
+                                    borderRadius: 999,
+                                    border: `1px solid ${active ? ACCENT : BORDER}`,
+                                    background: active ? ACCENT : CARD,
+                                    color: active ? "white" : ACCENT,
+                                    fontWeight: active ? 900 : 700,
+                                    cursor: "pointer",
+                                    fontSize: 12,
+                                }}
+                            >
+                                {opt.label}
+                            </button>
+                        );
+                    })}
+                </div>
+            </div>
+        );
+    };
+
+    const ShelfPicker = ({ doc, existingBook }) => {
+        if (!doc || !customShelves?.length) return null;
+
+        return (
+            <div style={{ marginTop: 10 }}>
+                <div
+                    style={{
+                        fontSize: 12,
+                        color: MUTED,
+                        fontWeight: 800,
+                        marginBottom: 8,
+                    }}
+                >
+                    Añadir también a...
+                </div>
+
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                    {customShelves.map((s) => {
+                        const shelfName = typeof s === "string" ? s : s?.name || "";
+                        const shelfKey = typeof s === "string" ? s : s?.id || shelfName;
+
+                        if (!shelfName) return null;
+
+                        const active =
+                            !!existingBook &&
+                            Array.isArray(existingBook.shelves) &&
+                            existingBook.shelves.includes(shelfName);
+
+                        return (
+                            <button
+                                key={shelfKey}
+                                type="button"
+                                onClick={() => {
+                                    if (existingBook?.id) {
+                                        toggleBookShelf(existingBook.id, shelfName);
+                                        return;
+                                    }
+
+                                    addFromResult(doc, {
+                                        shelves: [shelfName],
+                                    });
+                                }}
+                                style={{
+                                    padding: "8px 10px",
+                                    borderRadius: 999,
+                                    border: `1px solid ${active ? ACCENT : BORDER}`,
+                                    background: active ? "#F6F3EF" : CARD,
+                                    fontWeight: active ? 900 : 700,
+                                    cursor: "pointer",
+                                    color: ACCENT,
+                                    fontSize: 12,
+                                }}
+                                title={active ? "Quitar de esta shelf" : "Añadir a esta shelf"}
+                            >
+                                {shelfName}
+                            </button>
+                        );
+                    })}
+                </div>
+            </div>
+        );
+    };
+
     // normalizamos para que funcione tanto si viene {match:{...}} como si viene directo
     const normalizedMatch = useMemo(() => {
         if (!matchData) return null;
@@ -461,6 +678,14 @@ export default function Discover({ BORDER, CARD, ACCENT, MUTED, ghostBtn, bookOf
                                     </>
                                 }
                             />
+                            <StatusPicker
+                                doc={bookOfDayDoc}
+                                existingBook={existingBookOfDay}
+                            />
+                            <ShelfPicker
+                                doc={bookOfDayDoc}
+                                existingBook={existingBookOfDay}
+                            />
                         </div>
                     </div>
                     {/* book of the day AI */}
@@ -499,6 +724,14 @@ export default function Discover({ BORDER, CARD, ACCENT, MUTED, ghostBtn, bookOf
                                             </button>
                                         </>
                                     }
+                                />
+                                <StatusPicker
+                                    doc={bookOfDayAIDoc}
+                                    existingBook={existingBookOfDayAI}
+                                />
+                                <ShelfPicker
+                                    doc={bookOfDayAIDoc}
+                                    existingBook={existingBookOfDayAI}
                                 />
                             </div>
                         ) : null}

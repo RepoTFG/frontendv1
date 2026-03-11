@@ -531,7 +531,7 @@ export default function App() {
             // si ya existe --> actualizamos, no crear duplicado
             if (existingBook) {
                 // si viene de status y es distinto --> actualizamos status
-                if (status && existingBook.status !== status) {
+                if (typeof status === "string" && existingBook.status !== status) {
                     await cambiarEstado(existingBook.id, status);
                 }
 
@@ -562,8 +562,8 @@ export default function App() {
                 ? `https://covers.openlibrary.org/b/id/${doc.cover_i}-L.jpg`
                 : "";
 
-            // si se elige shelf personalizada y no viene status, ponemos uno por defecto
-            const finalStatus = status || "to_read";
+            // si se elige shelf personalizada y no viene status
+            const finalStatus = typeof status === "string" ? status : "";
 
             const work = await api.getOpenLibraryWork(doc.key); // doc.key tipo "/works/OLxxxxW"
             // ahora genres vienen de work (API) no de doc.subject
@@ -782,6 +782,12 @@ export default function App() {
                         ghostBtn={ghostBtn}
                         bookOfDay={bookOfDay}
                         bookOfDayLoading={bookOfDayLoading}
+                        books={books}
+                        customShelves={customShelves}
+                        addFromResult={addFromResult}
+                        toggleBookShelf={toggleBookShelf}
+                        addStatusByKey={addStatusByKey}
+                        setAddStatusByKey={setAddStatusByKey}
                     />
                 )}
 
