@@ -83,7 +83,37 @@ export default function Discover({ BORDER, CARD, ACCENT, MUTED, ghostBtn, bookOf
     // feedback
     const [bookOfDayFeedback, setBookOfDayFeedback] = useState(0); // 1 like, -1 dislike, 0 none
     const [bookOfDayFeedbackLoading, setBookOfDayFeedbackLoading] = useState(false);
+    // book of the day AI
+    const [bookOfDayAI, setBookOfDayAI] = useState(null);
+    const [bookOfDayAILoading, setBookOfDayAILoading] = useState(false);
 
+    const bookOfDayAIData = useMemo(() => {
+        const titleText =
+            bookOfDayAI?.title ||
+            "Placeholder: AI book";
+
+        const authorText =
+            bookOfDayAI?.author ||
+            "Autor/a";
+
+        const coverUrl =
+            bookOfDayAI?.coverUrl ||
+            "";
+
+        const subtitleText =
+            bookOfDayAI?.reason ||
+            "";
+
+        return {
+            title: "Book of the day (AI)",
+            subtitle: subtitleText,
+            book: {
+                title: titleText,
+                author: authorText,
+                coverUrl,
+            },
+        };
+    }, [bookOfDayAI]);
     // cargamos feedback: pidiendo token y llamamos a endpoint GET actualizando el estado
     const loadFeedback = async () => {
         try {
@@ -92,6 +122,20 @@ export default function Discover({ BORDER, CARD, ACCENT, MUTED, ghostBtn, bookOf
             setBookOfDayFeedback(data?.value || 0);
         } catch (e) {
             console.error(e);
+        }
+    };
+    // cargamos book of the day AI
+    const loadBookOfDayAI = async () => {
+        try {
+            setBookOfDayAILoading(true);
+            const token = await auth.currentUser.getIdToken();
+            const data = await api.getBookOfDayAI(token);
+            setBookOfDayAI(data || null);
+        } catch (e) {
+            console.error(e);
+            setBookOfDayAI(null);
+        } finally {
+            setBookOfDayAILoading(false);
         }
     };
     // enviamos feedback: activamos loading, haciendo post al backend (1 o -1) y actualizamos estado
@@ -111,6 +155,7 @@ export default function Discover({ BORDER, CARD, ACCENT, MUTED, ghostBtn, bookOf
     useEffect(() => {
         if (bookOfDay && !bookOfDayLoading) {
             loadFeedback();
+            loadBookOfDayAI();
         }
     }, [bookOfDay, bookOfDayLoading]);
 
@@ -386,25 +431,24 @@ export default function Discover({ BORDER, CARD, ACCENT, MUTED, ghostBtn, bookOf
                             />
                         </div>
                     </div>
-
-                    {/* más recomendaciones */}
+                    {/* book of the day AI */}
                     <div>
-                        <div style={{ fontWeight: 900, color: ACCENT }}>More for you</div>
+                        <div style={{ fontWeight: 900, color: ACCENT }}>Book of the day (AI)</div>
                         <div style={{ marginTop: 6, color: MUTED, fontSize: 13 }}>
-                            aquí se puede poner recomendaciones basadas en géneros/tags/diario --> luego mirar
+                            {bookOfDayAILoading ? "Cargando..." : (bookOfDayAIData.subtitle || "")}
                         </div>
 
-                        <div style={{ marginTop: 10, display: "grid", gap: 10 }}>
-                            {[1, 2, 3].map((i) => (
+                        {!bookOfDayAILoading && bookOfDayAI ? (
+                            <div style={{ marginTop: 10 }}>
                                 <CardRow
-                                    key={i}
-                                    coverUrl=""
-                                    titleText={`Placeholder recommendation ${i}`}
-                                    subtitleText="Autor/a · reason breve"
+                                    coverUrl={bookOfDayAIData.book.coverUrl}
+                                    titleText={bookOfDayAIData.book.title}
+                                    subtitleText={bookOfDayAIData.book.author}
                                 />
-                            ))}
-                        </div>
+                            </div>
+                        ) : null}
                     </div>
+
                 </div>
             )}
 

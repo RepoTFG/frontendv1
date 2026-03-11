@@ -229,6 +229,7 @@ export const api = {
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ value }),
         }),
+    getBookOfDayAI: (token) => authFetch("/api/discover/book-of-day-ai", { token }),
     // shelves
     listShelves: (token) => authFetch("/api/shelves", { token }),
 
