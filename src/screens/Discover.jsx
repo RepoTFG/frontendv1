@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import { auth } from "../firebase";
 import { api } from "../services/api";
 
@@ -94,31 +95,24 @@ export default function Discover({
             },
         };
     }, [bookOfDay]);
+
     // feedback
     const [bookOfDayFeedback, setBookOfDayFeedback] = useState(0); // 1 like, -1 dislike, 0 none
     const [bookOfDayFeedbackLoading, setBookOfDayFeedbackLoading] = useState(false);
+
     // book of the day AI
     const [bookOfDayAI, setBookOfDayAI] = useState(null);
     const [bookOfDayAILoading, setBookOfDayAILoading] = useState(false);
     const [bookOfDayAIFeedback, setBookOfDayAIFeedback] = useState(0); // 1 like, -1 dislike, 0 none
     const [bookOfDayAIFeedbackLoading, setBookOfDayAIFeedbackLoading] = useState(false);
+    const [aiRevealed, setAiRevealed] = useState(false);
+    const [aiAnimating, setAiAnimating] = useState(false);
 
     const bookOfDayAIData = useMemo(() => {
-        const titleText =
-            bookOfDayAI?.title ||
-            "Placeholder: AI book";
-
-        const authorText =
-            bookOfDayAI?.author ||
-            "Autor/a";
-
-        const coverUrl =
-            bookOfDayAI?.coverUrl ||
-            "";
-
-        const subtitleText =
-            bookOfDayAI?.reason ||
-            "";
+        const titleText = bookOfDayAI?.title || "Placeholder: AI book";
+        const authorText = bookOfDayAI?.author || "Autor/a";
+        const coverUrl = bookOfDayAI?.coverUrl || "";
+        const subtitleText = bookOfDayAI?.reason || "";
 
         return {
             title: "Book of the day (AI)",
@@ -155,13 +149,8 @@ export default function Discover({
     const bookOfDayAIDoc = useMemo(() => {
         if (!bookOfDayAIData?.book?.title) return null;
 
-        const workKey =
-            bookOfDayAI?.openLibrary?.workKey ||
-            "";
-
-        const coverId =
-            bookOfDayAI?.openLibrary?.coverId ??
-            null;
+        const workKey = bookOfDayAI?.openLibrary?.workKey || "";
+        const coverId = bookOfDayAI?.openLibrary?.coverId ?? null;
 
         return {
             key: workKey || `bod-ai-${bookOfDayAIData.book.title}-${bookOfDayAIData.book.author}`,
@@ -179,7 +168,9 @@ export default function Discover({
             : null;
 
         const titleNormalized = (bookOfDayDoc.title || "").trim().toLowerCase();
-        const authorNormalized = ((bookOfDayDoc.author_name && bookOfDayDoc.author_name[0]) || "").trim().toLowerCase();
+        const authorNormalized = ((bookOfDayDoc.author_name && bookOfDayDoc.author_name[0]) || "")
+            .trim()
+            .toLowerCase();
 
         const byText = books.find((b) => {
             const bt = (b.title || "").trim().toLowerCase();
@@ -198,7 +189,9 @@ export default function Discover({
             : null;
 
         const titleNormalized = (bookOfDayAIDoc.title || "").trim().toLowerCase();
-        const authorNormalized = ((bookOfDayAIDoc.author_name && bookOfDayAIDoc.author_name[0]) || "").trim().toLowerCase();
+        const authorNormalized = ((bookOfDayAIDoc.author_name && bookOfDayAIDoc.author_name[0]) || "")
+            .trim()
+            .toLowerCase();
 
         const byText = books.find((b) => {
             const bt = (b.title || "").trim().toLowerCase();
@@ -208,6 +201,7 @@ export default function Discover({
 
         return byCover || byText || null;
     }, [bookOfDayAIDoc, books]);
+
     // cargamos feedback: pidiendo token y llamamos a endpoint GET actualizando el estado
     const loadFeedback = async () => {
         try {
@@ -218,6 +212,7 @@ export default function Discover({
             console.error(e);
         }
     };
+
     // cargamos feedback book of the day AI
     const loadAIFeedback = async () => {
         try {
@@ -228,6 +223,7 @@ export default function Discover({
             console.error(e);
         }
     };
+
     // cargamos book of the day AI
     const loadBookOfDayAI = async () => {
         try {
@@ -235,13 +231,16 @@ export default function Discover({
             const token = await auth.currentUser.getIdToken();
             const data = await api.getBookOfDayAI(token);
             setBookOfDayAI(data || null);
+            return data || null;
         } catch (e) {
             console.error(e);
             setBookOfDayAI(null);
+            return null;
         } finally {
             setBookOfDayAILoading(false);
         }
     };
+
     // enviamos feedback: activamos loading, haciendo post al backend (1 o -1) y actualizamos estado
     const sendFeedback = async (value) => {
         try {
@@ -255,6 +254,7 @@ export default function Discover({
             setBookOfDayFeedbackLoading(false);
         }
     };
+
     // enviamos feedback AI: activamos loading, haciendo post al backend (1 o -1) y actualizamos estado
     const sendAIFeedback = async (value) => {
         try {
@@ -268,12 +268,11 @@ export default function Discover({
             setBookOfDayAIFeedbackLoading(false);
         }
     };
+
     // cuando cambie bookOfDay o Loading, revisamos si ya tiene un libro y que ya no esté cargando
     useEffect(() => {
         if (bookOfDay && !bookOfDayLoading) {
             loadFeedback();
-            loadBookOfDayAI();
-            loadAIFeedback();
         }
     }, [bookOfDay, bookOfDayLoading]);
 
@@ -282,6 +281,34 @@ export default function Discover({
             loadAIFeedback();
         }
     }, [bookOfDayAI]);
+
+    useEffect(() => {
+        setAiRevealed(false);
+        setAiAnimating(false);
+        setBookOfDayAI(null);
+        setBookOfDayAIFeedback(0);
+    }, [bookOfDay?.day, bookOfDay?.title]);
+
+    const revealAIBook = async () => {
+        if (aiRevealed || aiAnimating || bookOfDayAILoading) return;
+
+        try {
+            setAiAnimating(true);
+
+            let data = bookOfDayAI;
+            if (!data) {
+                data = await loadBookOfDayAI();
+            }
+
+            setTimeout(() => {
+                setAiRevealed(true);
+                setAiAnimating(false);
+            }, 320);
+        } catch (e) {
+            console.error(e);
+            setAiAnimating(false);
+        }
+    };
 
     const moods = useMemo(
         () => [
@@ -485,6 +512,119 @@ export default function Discover({
         </div>
     );
 
+    const MysteryBookCard = ({
+                                 onReveal,
+                                 loading,
+                                 revealed,
+                                 animating,
+                                 revealedCoverUrl,
+                                 titleText,
+                                 authorText,
+                                 subtitleText,
+                             }) => (
+        <div
+            style={{
+                border: `1px solid ${BORDER}`,
+                borderRadius: 16,
+                padding: 12,
+                background: "white",
+                display: "flex",
+                gap: 12,
+                alignItems: "center",
+            }}
+        >
+            <motion.button
+                type="button"
+                onClick={onReveal}
+                disabled={loading || revealed || animating}
+                whileHover={!loading && !revealed && !animating ? { y: -2 } : {}}
+                whileTap={!loading && !revealed && !animating ? { scale: 0.98 } : {}}
+                animate={animating ? { rotateY: -20, scale: 1.02 } : { rotateY: 0, scale: 1 }}
+                transition={{ duration: 0.35 }}
+                style={{
+                    width: 72,
+                    height: 104,
+                    borderRadius: 10,
+                    overflow: "hidden",
+                    border: `1px solid ${BORDER}`,
+                    background: "#F6F3EF",
+                    padding: 0,
+                    cursor: loading || revealed || animating ? "default" : "pointer",
+                    flex: "0 0 auto",
+                    position: "relative",
+                }}
+                title="Reveal book"
+            >
+                <AnimatePresence mode="wait">
+                    {!revealed && !animating ? (
+                        <motion.img
+                            key="mystery"
+                            src="/mystery-book.png"
+                            alt="Mystery book"
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            transition={{ duration: 0.2 }}
+                            style={{
+                                position: "absolute",
+                                inset: 0,
+                                width: "100%",
+                                height: "100%",
+                                objectFit: "cover",
+                                display: "block",
+                            }}
+                        />
+                    ) : revealedCoverUrl ? (
+                        <motion.img
+                            key="revealed"
+                            src={revealedCoverUrl}
+                            alt="Revealed book"
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            transition={{ duration: 0.25 }}
+                            style={{
+                                position: "absolute",
+                                inset: 0,
+                                width: "100%",
+                                height: "100%",
+                                objectFit: "cover",
+                                display: "block",
+                            }}
+                        />
+                    ) : null}
+                </AnimatePresence>
+            </motion.button>
+
+            <div style={{ flex: 1, minWidth: 0 }}>
+                {!revealed ? (
+                    <>
+                        <div style={{ fontWeight: 900, color: ACCENT, fontSize: 14 }}>
+                            For you
+                        </div>
+                        <div style={{ marginTop: 4, color: MUTED, fontSize: 13 }}>
+                            {loading || animating ? "Opening..." : "Tap the book to reveal your recommendation"}
+                        </div>
+                    </>
+                ) : (
+                    <>
+                        <div style={{ fontWeight: 900, color: ACCENT, fontSize: 14 }}>
+                            {titleText}
+                        </div>
+                        <div style={{ marginTop: 4, color: MUTED, fontSize: 13 }}>
+                            {authorText}
+                        </div>
+                        {!!subtitleText && (
+                            <div style={{ marginTop: 6, color: MUTED, fontSize: 12 }}>
+                                {subtitleText}
+                            </div>
+                        )}
+                    </>
+                )}
+            </div>
+        </div>
+    );
+
     const StatusPicker = ({ doc, existingBook }) => {
         if (!doc) return null;
 
@@ -636,9 +776,10 @@ export default function Discover({
             {/* for you */}
             {tab === "for_you" && (
                 <div style={{ display: "grid", gap: 12 }}>
-                    <div style={{ fontWeight: 900, color: ACCENT }}>Recommendations</div>
+                    <div style={{ fontWeight: 900, color: ACCENT }}>For you</div>
 
                     {/* book of the day */}
+                    {/*
                     <div>
                         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
                             <div style={{ fontWeight: 900, color: ACCENT }}>Book of the day</div>
@@ -656,7 +797,6 @@ export default function Discover({
                                 subtitleText={bookOfDayData.book.author}
                                 rightSlot={
                                     <>
-                                        {/* like/dislike */}
                                         <button
                                             type="button"
                                             style={pill(bookOfDayFeedback === 1)}
@@ -688,43 +828,44 @@ export default function Discover({
                             />
                         </div>
                     </div>
-                    {/* book of the day AI */}
-                    <div>
-                        <div style={{ fontWeight: 900, color: ACCENT }}>Book of the day (AI)</div>
-                        <div style={{ marginTop: 6, color: MUTED, fontSize: 13 }}>
-                            {bookOfDayAILoading ? "Cargando..." : (bookOfDayAIData.subtitle || "")}
-                        </div>
+                    */}
 
-                        {!bookOfDayAILoading && bookOfDayAI ? (
-                            <div style={{ marginTop: 10 }}>
-                                <CardRow
-                                    coverUrl={bookOfDayAIData.book.coverUrl}
-                                    titleText={bookOfDayAIData.book.title}
-                                    subtitleText={bookOfDayAIData.book.author}
-                                    rightSlot={
-                                        <>
-                                            {/* like/dislike */}
-                                            <button
-                                                type="button"
-                                                style={pill(bookOfDayAIFeedback === 1)}
-                                                title="Buena recomendación AI"
-                                                disabled={bookOfDayAIFeedbackLoading || bookOfDayAILoading}
-                                                onClick={() => sendAIFeedback(1)}
-                                            >
-                                                👍
-                                            </button>
-                                            <button
-                                                type="button"
-                                                style={pill(bookOfDayAIFeedback === -1)}
-                                                title="Mala recomendación AI"
-                                                disabled={bookOfDayAIFeedbackLoading || bookOfDayAILoading}
-                                                onClick={() => sendAIFeedback(-1)}
-                                            >
-                                                👎
-                                            </button>
-                                        </>
-                                    }
-                                />
+                    {/* book of the day AI */}
+                    <div style={{ display: "grid", gap: 10 }}>
+                        <MysteryBookCard
+                            onReveal={revealAIBook}
+                            loading={bookOfDayAILoading}
+                            revealed={aiRevealed}
+                            animating={aiAnimating}
+                            revealedCoverUrl={bookOfDayAIData.book.coverUrl}
+                            titleText={bookOfDayAIData.book.title}
+                            authorText={bookOfDayAIData.book.author}
+                            subtitleText={aiRevealed ? bookOfDayAIData.subtitle : ""}
+                        />
+
+                        {aiRevealed && !bookOfDayAILoading && bookOfDayAI ? (
+                            <>
+                                <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                                    <button
+                                        type="button"
+                                        style={pill(bookOfDayAIFeedback === 1)}
+                                        title="Buena recomendación AI"
+                                        disabled={bookOfDayAIFeedbackLoading || bookOfDayAILoading}
+                                        onClick={() => sendAIFeedback(1)}
+                                    >
+                                        👍
+                                    </button>
+                                    <button
+                                        type="button"
+                                        style={pill(bookOfDayAIFeedback === -1)}
+                                        title="Mala recomendación AI"
+                                        disabled={bookOfDayAIFeedbackLoading || bookOfDayAILoading}
+                                        onClick={() => sendAIFeedback(-1)}
+                                    >
+                                        👎
+                                    </button>
+                                </div>
+
                                 <StatusPicker
                                     doc={bookOfDayAIDoc}
                                     existingBook={existingBookOfDayAI}
@@ -733,10 +874,9 @@ export default function Discover({
                                     doc={bookOfDayAIDoc}
                                     existingBook={existingBookOfDayAI}
                                 />
-                            </div>
+                            </>
                         ) : null}
                     </div>
-
                 </div>
             )}
 
@@ -825,7 +965,9 @@ export default function Discover({
                             </div>
 
                             {searchTerms.length > 0 && !error && (
-                                <div style={{ color: MUTED, fontSize: 12 }}>Búsqueda usada: {searchTerms.join(" · ")}</div>
+                                <div style={{ color: MUTED, fontSize: 12 }}>
+                                    Búsqueda usada: {searchTerms.join(" · ")}
+                                </div>
                             )}
 
                             {/* results */}
@@ -840,7 +982,6 @@ export default function Discover({
                                             subtitleText={`${b.author || "Autor desconocido"}${b.firstPublishYear ? ` · ${b.firstPublishYear}` : ""}`}
                                             rightSlot={
                                                 <>
-                                                    {/* feedback */}
                                                     <button type="button" style={pill(false)} title="Buena recomendación">
                                                         👍
                                                     </button>
@@ -958,7 +1099,8 @@ export default function Discover({
                                     <div style={{ fontWeight: 900, color: ACCENT }}>Match found</div>
                                     <div style={{ marginTop: 6, color: MUTED, fontSize: 13 }}>
                                         Match: {typeof normalizedMatch.percent === "number" ? `${normalizedMatch.percent}%` : "—"}
-                                        {Array.isArray(normalizedMatch.sharedGenres) && normalizedMatch.sharedGenres.length
+                                        {Array.isArray(normalizedMatch.sharedGenres) &&
+                                        normalizedMatch.sharedGenres.length
                                             ? ` · Shared genres: ${normalizedMatch.sharedGenres.slice(0, 3).join(", ")}`
                                             : ""}
                                         {normalizedMatch.sharedMood
@@ -967,7 +1109,9 @@ export default function Discover({
                                     </div>
 
                                     <div style={{ marginTop: 10, display: "grid", gap: 10 }}>
-                                        {(Array.isArray(normalizedMatch.recommendations) ? normalizedMatch.recommendations : [])
+                                        {(Array.isArray(normalizedMatch.recommendations)
+                                            ? normalizedMatch.recommendations
+                                            : [])
                                             .slice(0, 5)
                                             .map((r, idx) => {
                                                 const cover = r.coverId
@@ -984,7 +1128,8 @@ export default function Discover({
                                                 );
                                             })}
 
-                                        {(!normalizedMatch.recommendations || normalizedMatch.recommendations.length === 0) ? (
+                                        {(!normalizedMatch.recommendations ||
+                                            normalizedMatch.recommendations.length === 0) ? (
                                             <div style={{ color: MUTED, fontSize: 13 }}>
                                                 No hay recomendaciones todavía (prueba Search new reader).
                                             </div>
