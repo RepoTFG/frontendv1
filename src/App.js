@@ -736,6 +736,7 @@ export default function App() {
                         addFromResult={addFromResult}
                         toggleBookShelf={toggleBookShelf}
                         setSelectedBook={setSelectedBook}
+                        setActiveTab={setActiveTab}
                         styles={styles}
                         inputStyle={inputStyle}
                         primaryBtn={primaryBtn}
@@ -744,10 +745,8 @@ export default function App() {
                         CARD={CARD}
                         ACCENT={ACCENT}
                         MUTED={MUTED}
-
                     />
                 )}
-
                 {activeTab === "library" && (
                     <Library
                         currentlyReading={currentlyReading}

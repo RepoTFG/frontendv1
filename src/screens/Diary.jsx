@@ -1,18 +1,15 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { auth } from "../firebase";
 import { api } from "../services/api";
+import DiaryListView from "../components/DiaryListView";
+import AICompanionModal from "../components/AICompanionModal";
 
 export default function Diary({ books, setSelectedBook, styles }) {
     const { ACCENT, SOFT, CARD, BORDER, MUTED } = styles;
 
     const [loading, setLoading] = useState(false);
     const [notes, setNotes] = useState([]);
-
-    const [q, setQ] = useState("");
-    const [bookId, setBookId] = useState("");
-
-    // tabs (All, Notes, Quotes, Reviews)
-    const [tab, setTab] = useState("all");
+    const [reviews, setReviews] = useState([]);
 
     // modal crear entrada
     const [newOpen, setNewOpen] = useState(false);
@@ -29,9 +26,7 @@ export default function Diary({ books, setSelectedBook, styles }) {
     const [reviewRating, setReviewRating] = useState(5);
     const [reviewText, setReviewText] = useState("");
     const [reviewIsPublic, setReviewIsPublic] = useState(false);
-    const [reviews, setReviews] = useState([]);
 
-    const onlyQuotes = tab === "quotes";
     // moods
     const MOODS = ["", "relaxed", "thoughtful", "excited", "anxious", "romantic", "curious"];
     const moodLabel = (m) =>
@@ -43,23 +38,28 @@ export default function Diary({ books, setSelectedBook, styles }) {
                             m === "curious" ? "curious" :
                                 "—";
 
-    //mood de la nueva nota (opcional)
+    // mood de la nueva nota (opcional)
     const [noteMood, setNoteMood] = useState("");
 
-    // editar nota (igual que en BookDetail)
+    // editar nota
     const [editingNoteId, setEditingNoteId] = useState(null);
     const [editText, setEditText] = useState("");
     const [editChapter, setEditChapter] = useState("");
     const [editQuote, setEditQuote] = useState("");
     const [editMood, setEditMood] = useState("");
     const [editOpen, setEditOpen] = useState(false);
+
     // IA companion
     const [aiLoadingId, setAiLoadingId] = useState(null);
     const [savingAnswersId, setSavingAnswersId] = useState(null);
     const [draftAnswers, setDraftAnswers] = useState({});
-    // para hacer la ux más minimalista
-    const [expandedId, setExpandedId] = useState(null);
-    const [menuOpenId, setMenuOpenId] = useState(null);
+
+    // modal ver todas
+    const [listViewOpen, setListViewOpen] = useState(false);
+    const [listViewType, setListViewType] = useState("notes");
+
+    // modal AI companion
+    const [companionModalOpen, setCompanionModalOpen] = useState(false);
 
     // map para resolver bookId --> info libro
     const bookById = useMemo(() => {
@@ -67,38 +67,19 @@ export default function Diary({ books, setSelectedBook, styles }) {
         (Array.isArray(books) ? books : []).forEach((b) => m.set(String(b.id), b));
         return m;
     }, [books]);
-
+    // carga de notas y reviews
     const load = useCallback(async () => {
         try {
             setLoading(true);
             const token = await auth.currentUser.getIdToken();
 
-            if (tab === "reviews") {
-                const data = await api.getMyReviews(token);
-                setReviews(Array.isArray(data) ? data : []);
-                setNotes([]);
-                setLoading(false);
-                return;
-            }
+            const [notesData, reviewsData] = await Promise.all([
+                api.listAllNotes(token, { limit: 300 }),
+                api.getMyReviews(token),
+            ]);
 
-            const data = await api.listAllNotes(token, {
-                q: q.trim() || undefined,
-                onlyQuotes: onlyQuotes ? true : undefined,
-                bookId: bookId || undefined,
-                limit: 300,
-            });
-
-            let out = Array.isArray(data) ? data : [];
-
-            // notes --> entradas que no tienen quote
-            if (tab === "notes") {
-                out = out.filter((n) => !(typeof n.quote === "string" && n.quote.trim()));
-            }
-            if (tab === "quotes") {
-                out = out.filter((n) => typeof n.quote === "string" && n.quote.trim());
-            }
-
-            setNotes(out);
+            setNotes(Array.isArray(notesData) ? notesData : []);
+            setReviews(Array.isArray(reviewsData) ? reviewsData : []);
         } catch (e) {
             alert(e.message || "Error cargando el Diary");
             setNotes([]);
@@ -106,20 +87,11 @@ export default function Diary({ books, setSelectedBook, styles }) {
         } finally {
             setLoading(false);
         }
-    }, [q, onlyQuotes, bookId, tab]);
-
-    // cargar al entrar y cambios filtros
+    }, []);
+    //cargamos
     useEffect(() => {
-        const t = setTimeout(() => load(), 250);
-        return () => clearTimeout(t);
+        load();
     }, [load]);
-
-    const card = {
-        border: `1px solid ${BORDER}`,
-        borderRadius: 18,
-        background: CARD,
-        padding: 14,
-    };
 
     const inputStyle = {
         padding: 12,
@@ -176,26 +148,17 @@ export default function Diary({ books, setSelectedBook, styles }) {
         fontWeight: 800,
         fontSize: 12,
     };
-
-    const menuBtn = {
-        width: 34,
-        height: 34,
-        borderRadius: 12,
-        border: `1px solid ${BORDER}`,
-        background: "white",
-        color: ACCENT,
-        cursor: "pointer",
-        fontWeight: 900,
-        fontSize: 18,
-        lineHeight: 1,
-    };
-
+    // para estados vacíos
+    const renderEmpty = (text) => (
+        <div style={{ color: MUTED, fontSize: 13, lineHeight: 1.45 }}>
+            {text}
+        </div>
+    );
+    // preparar modal para crear nueva entrada
     const openNewEntry = () => {
-        // por defecto selecciona el libro filtrado si hay, si no el primero
-        const fallback = bookId || (Array.isArray(books) && books[0]?.id ? String(books[0].id) : "");
+        const fallback = Array.isArray(books) && books[0]?.id ? String(books[0].id) : "";
         setDraftBookId(fallback);
 
-        // reseteo drafts
         setNoteChapter("");
         setNoteText("");
         setNoteQuote("");
@@ -208,7 +171,7 @@ export default function Diary({ books, setSelectedBook, styles }) {
         setNewType("note");
         setNewOpen(true);
     };
-
+    // crear o nota o review
     const createEntry = async () => {
         try {
             if (!draftBookId) {
@@ -229,7 +192,7 @@ export default function Diary({ books, setSelectedBook, styles }) {
                     chapter: noteChapter || "",
                     text: noteText.trim(),
                     quote: noteQuote || "",
-                    mood: noteMood || "", //guardamos mood con la nota
+                    mood: noteMood || "",
                 });
 
                 setNewOpen(false);
@@ -240,13 +203,12 @@ export default function Diary({ books, setSelectedBook, styles }) {
                 await load();
                 return;
             }
-
+            // crear review
             if (!reviewText.trim()) {
                 alert("Escribe tu reseña antes de guardar.");
                 return;
             }
 
-            // guardamos review como en BookDetail (PUT /api/books/:id/review)
             await api.putMyReview(token, draftBookId, {
                 text: reviewText.trim(),
                 rating: Number(reviewRating) || 5,
@@ -265,7 +227,7 @@ export default function Diary({ books, setSelectedBook, styles }) {
             setSaving(false);
         }
     };
-
+    // modal edición
     const empezarEditarNota = (n) => {
         setEditingNoteId(n.id);
         setEditText(n.text || "");
@@ -273,9 +235,8 @@ export default function Diary({ books, setSelectedBook, styles }) {
         setEditQuote(n.quote || "");
         setEditMood(n.mood || "");
         setEditOpen(true);
-        setMenuOpenId(null);
     };
-
+    //cerrar y limpiar modal edición
     const cancelarEditarNota = () => {
         setEditingNoteId(null);
         setEditText("");
@@ -302,7 +263,7 @@ export default function Diary({ books, setSelectedBook, styles }) {
                 quote: editQuote || "",
                 mood: editMood || "",
             });
-
+            // eliminar posible borrador
             setDraftAnswers((prev) => {
                 const next = { ...prev };
                 delete next[noteId];
@@ -324,10 +285,7 @@ export default function Diary({ books, setSelectedBook, styles }) {
             if (!ok) return;
 
             const token = await auth.currentUser.getIdToken();
-
             await api.deleteNote(token, noteId);
-
-            if (editingNoteId === noteId) cancelarEditarNota();
 
             setDraftAnswers((prev) => {
                 const next = { ...prev };
@@ -335,45 +293,32 @@ export default function Diary({ books, setSelectedBook, styles }) {
                 return next;
             });
 
-            if (expandedId === noteId) setExpandedId(null);
-            if (menuOpenId === noteId) setMenuOpenId(null);
-
             await load();
         } catch (e) {
             alert(e.message || "Error borrando la nota");
         }
     };
-// AI companion
-// reflexiones sobre notas
+    // crea reflexión por IA
     const reflectNote = async (n) => {
         try {
             if (!n?.id) return;
 
-            // si ya está abierta --> cerramos tanto tarjeta expandida como menú de opciones
-            if (expandedId === n.id) {
-                setExpandedId(null);
-                setMenuOpenId(null);
-                return;
-            }
-            setAiLoadingId(n.id); // marcamos como cargando
+            setAiLoadingId(n.id);
             const token = await auth.currentUser.getIdToken();
-            // generamos solo si no existe todavía
+
             if (!Array.isArray(n.aiCompanion?.questions) || n.aiCompanion.questions.length === 0) {
-                await api.generateNoteCompanion(token, n.id); // llamada backend para crear preguntas IA
+                await api.generateNoteCompanion(token, n.id);
                 await load();
             }
-            // abrimos la nota
-            setExpandedId(n.id);
-            setMenuOpenId(null);
         } catch (e) {
             alert(e.message || "Error generando la reflexión");
         } finally {
             setAiLoadingId(null);
         }
     };
-    // obtenemos las 3 respuestas
-    const getAnswersForNote = (n) => {
-        const fromDraft = draftAnswers[n.id]; // buscamos si habían respuestas
+    // respuestas: prioriza borrador no guardado
+    const getAnswersForNote = useCallback((n) => {
+        const fromDraft = draftAnswers[n.id];
         if (Array.isArray(fromDraft)) return fromDraft;
 
         const saved = Array.isArray(n.aiCompanion?.answers) ? n.aiCompanion.answers : [];
@@ -382,12 +327,10 @@ export default function Diary({ books, setSelectedBook, styles }) {
             saved[1] || "",
             saved[2] || "",
         ];
-    };
-    // actualizamos respuesta concreta del borrador
+    }, [draftAnswers]);
+    //actualizar respuesta en el borrador local
     const updateDraftAnswer = (noteId, idx, value, noteObj) => {
-        setDraftAnswers((prev) => { // usando versión anterior
-            // si hay borrador para esa nota --> versión anterior
-            // si no --> partir de respuestas guardadas
+        setDraftAnswers((prev) => {
             const current = Array.isArray(prev[noteId])
                 ? prev[noteId]
                 : [
@@ -396,14 +339,14 @@ export default function Diary({ books, setSelectedBook, styles }) {
                     noteObj?.aiCompanion?.answers?.[2] || "",
                 ];
             const next = [...current];
-            next[idx] = value; // cambiamos solo la respuesta que corresponde al índice
-            return { //actualizamos drafts
+            next[idx] = value;
+            return {
                 ...prev,
                 [noteId]: next,
             };
         });
     };
-    // guardamos al backend las respuestas
+    // guardar en backend respuestas de AICompanion
     const saveCompanionAnswers = async (noteId, noteObj) => {
         try {
             if (!noteId) return;
@@ -411,7 +354,7 @@ export default function Diary({ books, setSelectedBook, styles }) {
             setSavingAnswersId(noteId);
             const token = await auth.currentUser.getIdToken();
             const answers = getAnswersForNote(noteObj);
-            // enviamos:
+
             await api.updateNoteCompanion(token, noteId, {
                 answers,
             });
@@ -423,13 +366,13 @@ export default function Diary({ books, setSelectedBook, styles }) {
             setSavingAnswersId(null);
         }
     };
-    // obtenemos texto de la nota como preview cuando la nota está cerrada
+
     const getPreviewText = (n) => {
         const base = typeof n.text === "string" ? n.text.trim() : "";
         if (!base) return "";
-        return base.length > 180 ? `${base.slice(0, 180)}…` : base; // si texto largo --> cortar a 180 caracteres
+        return base.length > 180 ? `${base.slice(0, 180)}…` : base;
     };
-
+    // abrir detalle libro
     const openBook = (n) => {
         const b = bookById.get(String(n.bookId));
 
@@ -446,16 +389,266 @@ export default function Diary({ books, setSelectedBook, styles }) {
         };
 
         setSelectedBook(b || fallbackBook);
-        setMenuOpenId(null);
+    };
+    // separar notas y citas
+    const notesOnly = useMemo(
+        () => notes.filter((n) => !(typeof n.quote === "string" && n.quote.trim())),
+        [notes]
+    );
+    const quotesOnly = useMemo(
+        () => notes.filter((n) => typeof n.quote === "string" && n.quote.trim()),
+        [notes]
+    );
+    // ordenadas por fecha
+    const sortedNotes = useMemo(
+        () => [...notesOnly].sort((a, b) => new Date(b.updatedAt || b.createdAt || 0) - new Date(a.updatedAt || a.createdAt || 0)),
+        [notesOnly]
+    );
+    const sortedQuotes = useMemo(
+        () => [...quotesOnly].sort((a, b) => new Date(b.updatedAt || b.createdAt || 0) - new Date(a.updatedAt || a.createdAt || 0)),
+        [quotesOnly]
+    );
+    const sortedReviews = useMemo(
+        () => [...reviews].sort((a, b) => new Date(b.updatedAt || b.createdAt || 0) - new Date(a.updatedAt || a.createdAt || 0)),
+        [reviews]
+    );
+
+    const sectionCard = {
+        background: CARD,
+        border: `1px solid ${BORDER}`,
+        borderRadius: 24,
+        padding: 14,
+    };
+    // cabecera para cada bloque diary
+    const sectionTitleRow = (title, subtitle, onViewAll = null) => (
+        <div
+            style={{
+                display: "flex",
+                alignItems: "flex-start",
+                justifyContent: "space-between",
+                gap: 10,
+                marginBottom: 12,
+            }}
+        >
+            <div>
+                <div style={{ fontWeight: 900, color: ACCENT, fontSize: 19 }}>{title}</div>
+                <div style={{ marginTop: 4, color: MUTED, fontSize: 13 }}>{subtitle}</div>
+            </div>
+
+            {onViewAll && (
+                <button
+                    type="button"
+                    onClick={onViewAll}
+                    style={{
+                        ...subtleBtn,
+                        whiteSpace: "nowrap",
+                        flexShrink: 0,
+                    }}
+                >
+                    View all
+                </button>
+            )}
+        </div>
+    );
+
+    const renderNotePreview = (n) => {
+        const b = bookById.get(String(n.bookId));
+        const title = b?.title || n.bookTitle || "Libro";
+        const author = b?.author || n.bookAuthor || "";
+
+        return (
+            <button
+                key={n.id}
+                type="button"
+                onClick={() => {
+                    setListViewType("notes");
+                    setListViewOpen(true);
+                }}
+                style={{
+                    textAlign: "left",
+                    border: `1px solid ${BORDER}`,
+                    borderRadius: 18,
+                    background: CARD,
+                    padding: 14,
+                    cursor: "pointer",
+                }}
+            >
+                <div
+                    style={{
+                        fontWeight: 900,
+                        color: ACCENT,
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        whiteSpace: "nowrap",
+                    }}
+                >
+                    {title}
+                </div>
+
+                <div style={{ marginTop: 2, color: MUTED, fontSize: 12 }}>
+                    {[author, n.createdAt ? new Date(n.createdAt).toLocaleDateString() : ""].filter(Boolean).join(" · ")}
+                </div>
+
+                <div
+                    style={{
+                        marginTop: 10,
+                        color: MUTED,
+                        fontSize: 14,
+                        lineHeight: 1.6,
+                        display: "-webkit-box",
+                        WebkitLineClamp: 4,
+                        WebkitBoxOrient: "vertical",
+                        overflow: "hidden",
+                        whiteSpace: "pre-wrap",
+                    }}
+                >
+                    {getPreviewText(n)}
+                </div>
+            </button>
+        );
+    };
+    // preview grande cita/frase
+    const renderQuotePreview = (n, big = false) => {
+        const b = bookById.get(String(n.bookId));
+        const title = b?.title || n.bookTitle || "Libro";
+
+        return (
+            <button
+                key={n.id}
+                type="button"
+                onClick={() => {
+                    setListViewType("quotes");
+                    setListViewOpen(true);
+                }}
+                style={{
+                    textAlign: "left",
+                    border: `1px solid ${BORDER}`,
+                    borderRadius: 22,
+                    background: SOFT,
+                    padding: big ? 18 : 14,
+                    cursor: "pointer",
+                }}
+            >
+                <div style={{ color: MUTED, fontSize: 12, fontWeight: 800 }}>{title}</div>
+
+                <div
+                    style={{
+                        marginTop: 10,
+                        color: ACCENT,
+                        fontSize: big ? 24 : 18,
+                        lineHeight: 1.6,
+                        fontWeight: 800,
+                        display: "-webkit-box",
+                        WebkitLineClamp: big ? 5 : 3,
+                        WebkitBoxOrient: "vertical",
+                        overflow: "hidden",
+                        whiteSpace: "pre-wrap",
+                    }}
+                >
+                    “{n.quote}”
+                </div>
+            </button>
+        );
+    };
+    // preview review
+    const renderReviewPreview = (r) => {
+        const b = bookById.get(String(r.bookId));
+        const resolvedTitle = b?.title || r.bookTitle || r.title || "Libro";
+        const resolvedAuthor = b?.author || r.bookAuthor || r.author || "";
+
+        return (
+            <button
+                key={r.id}
+                type="button"
+                onClick={() => {
+                    const existing = bookById.get(String(r.bookId));
+                    if (existing) {
+                        setSelectedBook(existing);
+                        return;
+                    }
+
+                    setSelectedBook({
+                        id: r.bookId,
+                        title: resolvedTitle,
+                        author: resolvedAuthor,
+                        cover: { url: r.coverUrl || "" },
+                        status: "to_read",
+                        shelves: [],
+                        openLibrary: { workKey: "", authorKey: "" },
+                        readCount: 0,
+                        _deleted: true,
+                    });
+                }}
+                style={{
+                    textAlign: "left",
+                    border: `1px solid ${BORDER}`,
+                    borderRadius: 18,
+                    background: CARD,
+                    padding: 14,
+                    cursor: "pointer",
+                }}
+            >
+                <div style={{ display: "flex", justifyContent: "space-between", gap: 10 }}>
+                    <div style={{ minWidth: 0 }}>
+                        <div
+                            style={{
+                                fontWeight: 900,
+                                color: ACCENT,
+                                overflow: "hidden",
+                                textOverflow: "ellipsis",
+                                whiteSpace: "nowrap",
+                            }}
+                        >
+                            {resolvedTitle}
+                        </div>
+                        {resolvedAuthor ? (
+                            <div style={{ marginTop: 2, color: MUTED, fontSize: 12 }}>{resolvedAuthor}</div>
+                        ) : null}
+                    </div>
+
+                    <div style={{ fontSize: 12, color: ACCENT, fontWeight: 900 }}>
+                        ⭐ {r.rating || "?"}/5
+                    </div>
+                </div>
+
+                <div
+                    style={{
+                        marginTop: 10,
+                        color: ACCENT,
+                        fontSize: 14,
+                        lineHeight: 1.55,
+                        display: "-webkit-box",
+                        WebkitLineClamp: 4,
+                        WebkitBoxOrient: "vertical",
+                        overflow: "hidden",
+                        whiteSpace: "pre-wrap",
+                    }}
+                >
+                    {r.text}
+                </div>
+            </button>
+        );
     };
 
     return (
         <>
-            {/* encabezado y botón new entry */}
-            <div style={card}>
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
-                    <div style={{ fontWeight: 900, color: ACCENT }}>
-                        Reading Diary
+            {/* cabecera de la pantalla diary */}
+            <div
+                style={{
+                    border: `1px solid ${BORDER}`,
+                    borderRadius: 24,
+                    background: CARD,
+                    padding: 18,
+                }}
+            >
+                <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12 }}>
+                    <div>
+                        <div style={{ fontWeight: 900, color: ACCENT, fontSize: 26, lineHeight: 1.1 }}>
+                            Reading Diary
+                        </div>
+                        <div style={{ marginTop: 6, color: MUTED, fontSize: 14, lineHeight: 1.45 }}>
+                            Your recent notes, quotes, reviews and reflections.
+                        </div>
                     </div>
 
                     <button
@@ -473,376 +666,166 @@ export default function Diary({ books, setSelectedBook, styles }) {
                             alignItems: "center",
                             gap: 8,
                             whiteSpace: "nowrap",
+                            flexShrink: 0,
                         }}
                         title="Crear nueva entrada"
                     >
                         + New entry
                     </button>
                 </div>
-
-                <div style={{ marginTop: 12, display: "flex", gap: 8, flexWrap: "wrap" }}>
-                    <button type="button" onClick={() => setTab("all")} style={pill(tab === "all")}>
-                        All
-                    </button>
-                    <button type="button" onClick={() => setTab("notes")} style={pill(tab === "notes")}>
-                        Notes
-                    </button>
-                    <button type="button" onClick={() => setTab("quotes")} style={pill(tab === "quotes")}>
-                        Quotes
-                    </button>
-                    <button
-                        type="button"
-                        onClick={() => setTab("reviews")}
-                        style={pill(tab === "reviews")}
-                    >
-                        Reviews
-                    </button>
-                </div>
-
-                <div style={{ marginTop: 12, display: "grid", gap: 10 }}>
-                    <input
-                        value={q}
-                        onChange={(e) => setQ(e.target.value)}
-                        placeholder="Buscar en tus entradas (texto, capítulo o cita)"
-                        style={inputStyle}
-                    />
-
-                    <select
-                        value={bookId}
-                        onChange={(e) => setBookId(e.target.value)}
-                        style={inputStyle}
-                    >
-                        <option value="">Todos los libros</option>
-                        {(Array.isArray(books) ? books : []).map((b) => (
-                            <option key={b.id} value={b.id}>
-                                {b.title || "Sin título"}
-                            </option>
-                        ))}
-                    </select>
-                </div>
             </div>
 
-            {/* lista */}
-            <div style={{ marginTop: 14, display: "grid", gap: 10 }}>
-                {loading ? (
-                    <div style={{ opacity: 0.7 }}>Cargando entradas...</div>
-                ) : tab === "reviews" ? (
-                    reviews.length === 0 ? (
-                        <div style={{ ...card, color: MUTED, fontSize: 13 }}>
-                            Todavía no has escrito ninguna reseña.
-                        </div>
-                    ) : (
-                        reviews.map((r) => {
-                            const b = bookById.get(String(r.bookId));
-
-                            const fallbackBook = {
-                                id: r.bookId,
-                                title: r.title || "Libro",
-                                author: r.author || "",
-                                cover: { url: r.coverUrl || "" },
-                                status: "to_read",
-                                shelves: [],
-                                openLibrary: { workKey: "", authorKey: "" },
-                                readCount: 0,
-                                _deleted: true,
-                            };
-
-                            const bookToOpen = b || fallbackBook;
-
-                            return (
-                                <button
-                                    key={r.id}
-                                    type="button"
-                                    onClick={() => setSelectedBook(bookToOpen)}
-                                    style={{
-                                        textAlign: "left",
-                                        border: `1px solid ${BORDER}`,
-                                        borderRadius: 18,
-                                        background: CARD,
-                                        padding: 14,
-                                        cursor: "pointer",
-                                    }}
-                                >
-                                    <div style={{ display: "flex", justifyContent: "space-between", gap: 10 }}>
-                                        <div style={{ minWidth: 0 }}>
-                                            <div
-                                                style={{
-                                                    fontWeight: 900,
-                                                    color: ACCENT,
-                                                    overflow: "hidden",
-                                                    textOverflow: "ellipsis",
-                                                    whiteSpace: "nowrap",
-                                                }}
-                                            >
-                                                {bookToOpen.title}
-                                            </div>
-
-                                            {bookToOpen.author && (
-                                                <div style={{ marginTop: 2, color: MUTED, fontSize: 12 }}>
-                                                    {bookToOpen.author}
-                                                </div>
-                                            )}
-                                        </div>
-
-                                        <div style={{ fontSize: 12, color: MUTED, whiteSpace: "nowrap" }}>
-                                            ⭐ {r.rating || "?"}/5
-                                        </div>
-                                    </div>
-
-                                    <div style={{ marginTop: 8, color: ACCENT, whiteSpace: "pre-wrap" }}>
-                                        {r.text}
-                                    </div>
-
-                                    <div style={{ marginTop: 10, fontSize: 12, color: MUTED }}>
-                                        {r.isPublic ? "Reseña pública (anónima)" : "Reseña privada"}
-                                        {r.updatedAt ? ` · ${new Date(r.updatedAt).toLocaleDateString()}` : r.createdAt ? ` · ${new Date(r.createdAt).toLocaleDateString()}` : ""}
-                                    </div>
-                                </button>
-                            );
-                        })
-                    )
-                ) : notes.length === 0 ? (
-                    <div style={{ ...card, color: MUTED, fontSize: 13 }}>
-                        No hay entradas todavía. Pulsa “+ New entry” para escribir la primera.
+            <div style={{ marginTop: 16, display: "grid", gap: 16 }}>
+                {/* bloque IA */}
+                <div
+                    style={{
+                        background: SOFT,
+                        border: `1px solid ${BORDER}`,
+                        borderRadius: 24,
+                        padding: 16,
+                        textAlign: "center",
+                    }}
+                >
+                    <div style={{ fontWeight: 900, color: ACCENT, fontSize: 18 }}>
+                        Is it the moment to do a reflection?
                     </div>
-                ) : (
-                    notes.map((n) => {
-                        const b = bookById.get(String(n.bookId));
-                        const title = b?.title || n.bookTitle || "Libro";
-                        const author = b?.author || n.bookAuthor || "";
-                        const companion = n.aiCompanion || null;
-                        const hasCompanion = Array.isArray(companion?.questions) && companion.questions.length > 0;
-                        const answers = getAnswersForNote(n);
-                        const answeredCount = answers.filter((x) => String(x || "").trim()).length;
-                        const expanded = expandedId === n.id;
 
-                        return (
-                            <div
-                                key={n.id}
-                                style={{
-                                    textAlign: "left",
-                                    border: `1px solid ${expanded ? ACCENT : BORDER}`,
-                                    borderRadius: 18,
-                                    background: CARD,
-                                    padding: 14,
-                                    transition: "border-color 120ms ease",
-                                }}
-                            >
-                                <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "flex-start" }}>
-                                    <div
-                                        role="button"
-                                        tabIndex={0}
-                                        onClick={() => setExpandedId((prev) => prev === n.id ? null : n.id)}
-                                        onKeyDown={(e) => {
-                                            if (e.key === "Enter" || e.key === " ") {
-                                                setExpandedId((prev) => prev === n.id ? null : n.id);
-                                            }
-                                        }}
-                                        style={{ minWidth: 0, flex: 1, cursor: "pointer" }}
-                                    >
-                                        <div
-                                            style={{
-                                                fontWeight: 900,
-                                                color: ACCENT,
-                                                overflow: "hidden",
-                                                textOverflow: "ellipsis",
-                                                whiteSpace: "nowrap",
-                                            }}
-                                        >
-                                            {title}
-                                        </div>
+                    <div style={{ marginTop: 8, color: MUTED, fontSize: 14, lineHeight: 1.45 }}>
+                        With AI, you can reflect more deeply on the books you read.
+                    </div>
 
-                                        <div style={{ marginTop: 2, color: MUTED, fontSize: 12 }}>
-                                            {[author, n.createdAt ? new Date(n.createdAt).toLocaleDateString() : ""].filter(Boolean).join(" · ")}
-                                        </div>
+                    <div
+                        style={{
+                            marginTop: 14,
+                            display: "flex",
+                            justifyContent: "center",
+                        }}
+                    >
+                        <button
+                            type="button"
+                            onClick={() => setCompanionModalOpen(true)}
+                            style={{
+                                padding: "10px 16px",
+                                borderRadius: 999,
+                                border: `1px solid ${ACCENT}`,
+                                background: CARD,
+                                color: ACCENT,
+                                cursor: "pointer",
+                                fontWeight: 900,
+                            }}
+                        >
+                            AI companion
+                        </button>
+                    </div>
+                </div>
+                {/* secciones: notas, citas, review */}
+                <div>
+                    <div style={{ marginBottom: 12, color: MUTED, fontSize: 14, fontWeight: 800 }}>
+                        Your recent thoughts
+                    </div>
 
-                                        {!expanded && (
-                                            <div style={{ marginTop: 8, color: MUTED, fontSize: 13, lineHeight: 1.45, whiteSpace: "pre-wrap" }}>
-                                                {getPreviewText(n)}
-                                            </div>
-                                        )}
-                                    </div>
+                    <div
+                        style={{
+                            display: "grid",
+                            gap: 14,
+                        }}
+                    >
+                        <div style={sectionCard}>
+                            {sectionTitleRow(
+                                "Notes",
+                                () => {
+                                    setListViewType("notes");
+                                    setListViewOpen(true);
+                                }
+                            )}
 
-                                    <div style={{ position: "relative", display: "flex", gap: 8, alignItems: "center", flexShrink: 0 }}>
-                                        <button
-                                            type="button"
-                                            onClick={() => reflectNote(n)}
-                                            style={subtleBtn}
-                                            title="Abrir AI companion"
-                                            disabled={aiLoadingId === n.id}
-                                        >
-                                            {aiLoadingId === n.id
-                                                ? "Thinking..."
-                                                : expanded
-                                                    ? "Close companion"
-                                                    : hasCompanion
-                                                        ? `AI companion · ${answeredCount}/3`
-                                                        : "AI companion"}
-                                        </button>
-
-                                        <button
-                                            type="button"
-                                            onClick={() => setMenuOpenId((prev) => prev === n.id ? null : n.id)}
-                                            style={menuBtn}
-                                            title="Más opciones"
-                                        >
-                                            ⋯
-                                        </button>
-
-                                        {menuOpenId === n.id && (
-                                            <div
-                                                style={{
-                                                    position: "absolute",
-                                                    top: 40,
-                                                    right: 0,
-                                                    minWidth: 160,
-                                                    background: "white",
-                                                    border: `1px solid ${BORDER}`,
-                                                    borderRadius: 14,
-                                                    boxShadow: "0 8px 24px rgba(0,0,0,0.08)",
-                                                    padding: 6,
-                                                    display: "grid",
-                                                    gap: 4,
-                                                    zIndex: 5,
-                                                }}
-                                            >
-                                                <button
-                                                    type="button"
-                                                    onClick={() => openBook(n)}
-                                                    style={{
-                                                        ...subtleBtn,
-                                                        width: "100%",
-                                                        textAlign: "left",
-                                                        borderRadius: 10,
-                                                    }}
-                                                >
-                                                    Open book
-                                                </button>
-                                                <button
-                                                    type="button"
-                                                    onClick={() => empezarEditarNota(n)}
-                                                    style={{
-                                                        ...subtleBtn,
-                                                        width: "100%",
-                                                        textAlign: "left",
-                                                        borderRadius: 10,
-                                                    }}
-                                                >
-                                                    Edit note
-                                                </button>
-                                                <button
-                                                    type="button"
-                                                    onClick={() => borrarNota(n.id)}
-                                                    style={{
-                                                        ...subtleBtn,
-                                                        width: "100%",
-                                                        textAlign: "left",
-                                                        borderRadius: 10,
-                                                    }}
-                                                >
-                                                    Delete
-                                                </button>
-                                            </div>
-                                        )}
-                                    </div>
+                            {loading ? (
+                                <div style={{ opacity: 0.7 }}>Cargando entradas...</div>
+                            ) : sortedNotes.length === 0 ? (
+                                renderEmpty("Todavía no hay notas.")
+                            ) : (
+                                <div style={{ display: "grid", gap: 10 }}>
+                                    {sortedNotes.slice(0, 1).map((n) => renderNotePreview(n))}
                                 </div>
+                            )}
+                        </div>
 
-                                {/* mostramos mood si existe  */}
-                                {typeof n.mood === "string" && n.mood.trim() && (
-                                    <div style={{ marginTop: 10, display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12, color: MUTED, fontWeight: 800 }}>
-                                        <span>Mood:</span>
-                                        <span style={{ color: ACCENT }}>{moodLabel(n.mood)}</span>
-                                    </div>
-                                )}
+                        <div style={sectionCard}>
+                            {sectionTitleRow(
+                                "Quotes",
+                                () => {
+                                    setListViewType("quotes");
+                                    setListViewOpen(true);
+                                }
+                            )}
 
-                                {expanded && (
-                                    <>
-                                        {n.chapter && (
-                                            <div style={{ marginTop: 12, fontSize: 12, color: MUTED, fontWeight: 800 }}>
-                                                {n.chapter}
-                                            </div>
-                                        )}
+                            {loading ? (
+                                <div style={{ opacity: 0.7 }}>Cargando entradas...</div>
+                            ) : sortedQuotes.length === 0 ? (
+                                renderEmpty("Todavía no hay frases destacadas.")
+                            ) : (
+                                <div style={{ display: "grid", gap: 10 }}>
+                                    {sortedQuotes.slice(0, 1).map((n) => renderQuotePreview(n, true))}
+                                </div>
+                            )}
+                        </div>
 
-                                        <div style={{ marginTop: 8, color: ACCENT, whiteSpace: "pre-wrap", lineHeight: 1.55 }}>
-                                            {n.text}
-                                        </div>
+                        <div style={sectionCard}>
+                            {sectionTitleRow(
+                                "Reviews",
+                                () => {
+                                    setListViewType("reviews");
+                                    setListViewOpen(true);
+                                }
+                            )}
 
-                                        {n.quote && (
-                                            <div style={{ marginTop: 10, fontStyle: "italic", color: MUTED, lineHeight: 1.5 }}>
-                                                “{n.quote}”
-                                            </div>
-                                        )}
-
-                                        {hasCompanion && (
-                                            <div
-                                                onClick={(e) => e.stopPropagation()}
-                                                style={{
-                                                    marginTop: 12,
-                                                    border: `1px solid ${BORDER}`,
-                                                    borderRadius: 14,
-                                                    background: SOFT,
-                                                    padding: 12,
-                                                    display: "grid",
-                                                    gap: 10,
-                                                    cursor: "default",
-                                                }}
-                                            >
-                                                <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "center" }}>
-                                                    <div style={{ fontWeight: 900, color: ACCENT, fontSize: 13 }}>
-                                                        Reading companion
-                                                    </div>
-
-                                                    <div style={{ color: MUTED, fontSize: 12, fontWeight: 800 }}>
-                                                        {answeredCount}/3 answered
-                                                    </div>
-                                                </div>
-
-                                                {companion.intro ? (
-                                                    <div style={{ color: MUTED, fontSize: 13 }}>
-                                                        {companion.intro}
-                                                    </div>
-                                                ) : null}
-
-                                                <div style={{ display: "grid", gap: 10 }}>
-                                                    {(companion.questions || []).map((question, idx) => (
-                                                        <div key={idx} style={{ display: "grid", gap: 6 }}>
-                                                            <div style={{ color: ACCENT, fontSize: 14, lineHeight: 1.45, fontWeight: 800 }}>
-                                                                {idx + 1}. {question}
-                                                            </div>
-
-                                                            <textarea
-                                                                value={answers[idx] || ""}
-                                                                onChange={(e) => updateDraftAnswer(n.id, idx, e.target.value, n)}
-                                                                placeholder="Write your reflection..."
-                                                                rows={3}
-                                                                style={{ ...inputStyle, resize: "vertical", background: CARD }}
-                                                            />
-                                                        </div>
-                                                    ))}
-                                                </div>
-
-                                                <button
-                                                    onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        saveCompanionAnswers(n.id, n);
-                                                    }}
-                                                    style={primaryBtn}
-                                                    type="button"
-                                                    disabled={savingAnswersId === n.id}
-                                                >
-                                                    {savingAnswersId === n.id ? "Saving..." : "Save reflections"}
-                                                </button>
-                                            </div>
-                                        )}
-                                    </>
-                                )}
-                            </div>
-                        );
-                    })
-                )}
+                            {loading ? (
+                                <div style={{ opacity: 0.7 }}>Cargando entradas...</div>
+                            ) : sortedReviews.length === 0 ? (
+                                renderEmpty("Todavía no has escrito ninguna reseña.")
+                            ) : (
+                                <div style={{ display: "grid", gap: 10 }}>
+                                    {sortedReviews.slice(0, 1).map((r) => renderReviewPreview(r))}
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
             </div>
-
-            {/* modal crear entrada (al igual que en BookDetail) */}
+            {/* modal para listar todas notas, reviews, citas */}
+            {listViewOpen && (
+                <DiaryListView
+                    type={listViewType}
+                    books={books}
+                    setSelectedBook={setSelectedBook}
+                    styles={styles}
+                    onClose={() => setListViewOpen(false)}
+                    notes={notes}
+                    reviews={reviews}
+                    openBook={openBook}
+                    empezarEditarNota={empezarEditarNota}
+                    borrarNota={borrarNota}
+                    moodLabel={moodLabel}
+                    getPreviewText={getPreviewText}
+                />
+            )}
+            {/* modal IA */}
+            {companionModalOpen && (
+                <AICompanionModal
+                    notes={notes}
+                    books={books}
+                    styles={styles}
+                    onClose={() => setCompanionModalOpen(false)}
+                    getAnswersForNote={getAnswersForNote}
+                    reflectNote={reflectNote}
+                    aiLoadingId={aiLoadingId}
+                    saveCompanionAnswers={saveCompanionAnswers}
+                    savingAnswersId={savingAnswersId}
+                    updateDraftAnswer={updateDraftAnswer}
+                    moodLabel={moodLabel}
+                />
+            )}
+            {/* modal crear nueva entrada */}
             {newOpen && (
                 <div
                     onClick={() => setNewOpen(false)}
@@ -874,7 +857,7 @@ export default function Diary({ books, setSelectedBook, styles }) {
                                 Cerrar
                             </button>
                         </div>
-
+                        {/* seleccionar nota o review */}
                         <div style={{ marginTop: 12, display: "flex", gap: 8, flexWrap: "wrap" }}>
                             <button type="button" onClick={() => setNewType("note")} style={pill(newType === "note")}>
                                 Nota
@@ -885,6 +868,7 @@ export default function Diary({ books, setSelectedBook, styles }) {
                         </div>
 
                         <div style={{ display: "grid", gap: 10, marginTop: 12 }}>
+                            {/* seleccionar libro */}
                             <select
                                 value={draftBookId}
                                 onChange={(e) => setDraftBookId(e.target.value)}
@@ -897,10 +881,9 @@ export default function Diary({ books, setSelectedBook, styles }) {
                                     </option>
                                 ))}
                             </select>
-
+                            {/* crear nota */}
                             {newType === "note" ? (
                                 <>
-                                    {/* mood al crear la nota (opcional) */}
                                     <div style={{ display: "grid", gap: 6 }}>
                                         <div style={{ fontSize: 12, color: MUTED, fontWeight: 800 }}>
                                             Mood (opcional)
@@ -952,9 +935,10 @@ export default function Diary({ books, setSelectedBook, styles }) {
                                     </button>
                                 </>
                             ) : (
+                                //crear review
                                 <>
                                     <select
-                                        value={reviewRating} // gusrdamos el score
+                                        value={reviewRating}
                                         onChange={(e) => setReviewRating(Number(e.target.value))}
                                         style={{
                                             ...inputStyle,
@@ -975,7 +959,7 @@ export default function Diary({ books, setSelectedBook, styles }) {
                                         value={reviewText}
                                         onChange={(e) => setReviewText(e.target.value)}
                                         rows={4}
-                                        style={{ ...inputStyle, resize: "vertical" }} // agrandamos solo en vertical
+                                        style={{ ...inputStyle, resize: "vertical" }}
                                     />
 
                                     <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
@@ -983,11 +967,8 @@ export default function Diary({ books, setSelectedBook, styles }) {
 
                                         <button
                                             onClick={() => {
-                                                // modo privado
-                                                // (no cambia tu reseña, solo el modo de guardado)
                                                 setReviewIsPublic(false);
                                             }}
-                                            // ahora tipo pill
                                             style={{
                                                 ...pill(!reviewIsPublic),
                                                 border: `1px solid ${!reviewIsPublic ? ACCENT : BORDER}`,
@@ -999,7 +980,6 @@ export default function Diary({ books, setSelectedBook, styles }) {
 
                                         <button
                                             onClick={() => {
-                                                // modo publico anonimo
                                                 setReviewIsPublic(true);
                                             }}
                                             style={{
@@ -1032,7 +1012,6 @@ export default function Diary({ books, setSelectedBook, styles }) {
                     </div>
                 </div>
             )}
-
             {/* modal editar nota */}
             {editOpen && (
                 <div
@@ -1067,7 +1046,6 @@ export default function Diary({ books, setSelectedBook, styles }) {
                         </div>
 
                         <div style={{ display: "grid", gap: 10, marginTop: 12 }}>
-                            {/* mood al editar la nota (opcional) */}
                             <div style={{ display: "grid", gap: 6 }}>
                                 <div style={{ fontSize: 12, color: MUTED, fontWeight: 800 }}>
                                     Mood (opcional)
