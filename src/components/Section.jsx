@@ -1,6 +1,6 @@
 // src/components/Section.jsx
 export default function Section({ title, items, onPick, styles }) {
-    const { ACCENT, SOFT, BORDER, MUTED } = styles;
+    const { ACCENT, SOFT, BORDER } = styles;
 
     return (
         <div style={{ marginTop: 14 }}>
@@ -16,9 +16,6 @@ export default function Section({ title, items, onPick, styles }) {
                 <h2 style={{ margin: 0, fontSize: 16, letterSpacing: -0.2, color: ACCENT }}>
                     {title}
                 </h2>
-                <div style={{ fontSize: 12, color: MUTED, fontWeight: 800 }}>
-                    {items.length}
-                </div>
             </div>
 
             {/* si no hay libros --> mostramos texto */}

@@ -78,34 +78,15 @@ export default function Library({
         book?.photo ||
         "";
 
-    // contar libros custom shelf
-    const getShelfCount = (shelfName) => {
-        const section = customSections.find((sec) => sec.name === shelfName);
-        return Array.isArray(section?.items) ? section.items.length : 0;
-    };
+
     // devolvemos 3 libros de esa custom shelf
     const getShelfPreview = (shelfName) => {
         const section = customSections.find((sec) => sec.name === shelfName);
         return Array.isArray(section?.items) ? section.items.slice(0, 3) : [];
     };
-    // estilo contador
-    const countPill = {
-        minWidth: 26,
-        height: 26,
-        borderRadius: 999,
-        display: "inline-flex",
-        alignItems: "center",
-        justifyContent: "center",
-        padding: "0 9px",
-        border: `1px solid ${BORDER}`,
-        background: SOFT,
-        color: ACCENT,
-        fontSize: 12,
-        fontWeight: 900,
-        flexShrink: 0,
-    };
+
     // creamos la fila del titulo para luego reutilizar, opcional algo a la derecha (+ New shelf)
-    const sectionTitleRow = (title, count, rightNode = null) => (
+    const sectionTitleRow = (title, rightNode = null) => (
         <div
             style={{
                 display: "flex",
@@ -127,8 +108,8 @@ export default function Library({
                 >
                     {title}
                 </h3>
-                <div style={countPill}>{count}</div>
             </div>
+
             {rightNode}
         </div>
     );
@@ -295,7 +276,7 @@ export default function Library({
         <>
 
             <div style={{ marginTop: 18 }}>
-                {sectionTitleRow("Currently reading", currentlyReading.length)}
+                {sectionTitleRow("Currently reading")}
                 <div
                     style={{
                         border: `1px solid ${BORDER}`,
@@ -309,7 +290,7 @@ export default function Library({
             </div>
 
             <div style={{ marginTop: 22 }}>
-                {sectionTitleRow("My shelves", activeMainSection?.items?.length || 0)}
+                {sectionTitleRow("My shelves")}
                 <div
                     style={{
                         border: `1px solid ${BORDER}`,
@@ -346,7 +327,6 @@ export default function Library({
             <div style={{ marginTop: 22 }}>
                 {sectionTitleRow(
                     "Custom shelves",
-                    customShelves.length,
                     <button
                         type="button"
                         onClick={() => setShowCreateShelf((v) => !v)}
@@ -431,7 +411,7 @@ export default function Library({
                             >
                                 {customShelves.map((shelf, idx) => {
                                     const isActive = activeCustomShelf === shelf.name;
-                                    const count = getShelfCount(shelf.name);
+
                                     const preview = getShelfPreview(shelf.name);
 
                                     return (
@@ -469,16 +449,7 @@ export default function Library({
                                                     >
                                                         {shelf.name}
                                                     </div>
-                                                    <div
-                                                        style={{
-                                                            marginTop: 5,
-                                                            color: MUTED,
-                                                            fontSize: 12,
-                                                            fontWeight: 700,
-                                                        }}
-                                                    >
-                                                        {count} {count === 1 ? "book" : "books"}
-                                                    </div>
+
                                                 </div>
 
                                                 <button
