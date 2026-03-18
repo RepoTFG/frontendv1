@@ -20,6 +20,7 @@ export default function Home({
                                  addFromResult,
                                  toggleBookShelf,
                                  setSelectedBook,
+                                 setActiveTab,
 
                                  // styles
                                  styles,
@@ -55,6 +56,7 @@ export default function Home({
             if (lastQueryRef.current === q) return;
             lastQueryRef.current = q;
             buscarLibros();
+            setResultsOpen(true);
         }, 350);
 
         return () => {
@@ -62,26 +64,69 @@ export default function Home({
         };
     }, [query, buscarLibros]);
 
+    const homeCard = {
+        border: `1px solid ${BORDER}`,
+        borderRadius: 20,
+        background: CARD,
+        padding: 14,
+    };
+
+    const smallLabel = {
+        fontSize: 12,
+        fontWeight: 800,
+        color: MUTED,
+        marginBottom: 8,
+        letterSpacing: "0.01em",
+    };
+
     return (
         <>
+            <div
+                style={{
+                    marginBottom: 18,
+                }}
+            >
+                <div
+                    style={{
+                        color: ACCENT,
+                        fontWeight: 900,
+                        fontSize: 30,
+                        lineHeight: 1.05,
+                        letterSpacing: "-0.03em",
+                    }}
+                >
+                    Welcome to Readroom
+                </div>
+
+                <div
+                    style={{
+                        marginTop: 8,
+                        color: MUTED,
+                        fontSize: 14,
+                        lineHeight: 1.45,
+                        maxWidth: 520,
+                    }}
+                >
+                    A quieter space for reading, reflection, and keeping books close to you.
+                </div>
+            </div>
+
             {/* card búsqueda */}
             <div
                 style={{
-                    border: `1px solid ${BORDER}`,
-                    borderRadius: 18,
-                    background: CARD,
-                    padding: 14,
+                    ...homeCard,
+                    padding: 16,
                 }}
             >
-                <div style={{ fontWeight: 900, color: ACCENT, marginBottom: 10 }}>
-                    Buscar
+                <div style={{ fontWeight: 900, color: ACCENT, marginBottom: 12, fontSize: 24 }}>
+                    Find a book
                 </div>
 
                 <div style={{ display: "flex", gap: 10 }}>
                     <input
                         value={query}
                         onChange={(e) => setQuery(e.target.value)}
-                        placeholder="Título, autor o ISBN"
+                        placeholder="Title, author or ISBN"
                         style={inputStyle}
                     />
                     <button
@@ -93,11 +138,10 @@ export default function Home({
                         type="button"
                     >
                         {/* cambiamos el texto del botón si está buscando */}
-                        {searching ? "..." : "Buscar"}
+                        {searching ? "..." : "Search"}
                     </button>
                 </div>
             </div>
-
 
             {/* resultados tipo cards */}
             {results.length > 0 && (
@@ -115,7 +159,7 @@ export default function Home({
                         }}
                     >
                         <div style={{ fontWeight: 900, color: ACCENT }}>
-                            Resultados ({results.length})
+                            Results ({results.length})
                         </div>
 
                         {resultsOpen ? (
@@ -154,7 +198,7 @@ export default function Home({
                                 title="Mostrar resultados"
                                 aria-label="Mostrar resultados"
                             >
-                                Mostrar resultados
+                                Show results
                             </button>
                         )}
                     </div>
@@ -332,9 +376,6 @@ export default function Home({
                                                     </div>
                                                 </div>
                                             )}
-
-
-
                                         </div>
                                     </div>
                                 );
@@ -344,8 +385,101 @@ export default function Home({
                 </div>
             )}
 
-            <FinishedBookshelf items={finished} onPick={(b) => setSelectedBook(b)} styles={styles}/>
-            <Section title="Currently reading" items={currentlyReading} onPick={(b) => setSelectedBook(b)} styles={styles}/>
+            <div style={{ marginTop: 18 }}>
+                <div style={smallLabel}>Continue reading</div>
+                <div
+                    style={{
+                        ...homeCard,
+                        padding: 12,
+                    }}
+                >
+                    <Section title="" items={currentlyReading} onPick={(b) => setSelectedBook(b)} styles={styles}/>
+                </div>
+            </div>
+
+            <div style={{ marginTop: 18 }}>
+                <div style={smallLabel}>For this moment</div>
+
+                <div
+                    style={{
+                        display: "flex",
+                        gap: 10,
+                        overflowX: "auto",
+                        paddingBottom: 4,
+                        WebkitOverflowScrolling: "touch",
+                    }}
+                >
+                    {[
+                        {
+                            key: "diary",
+                            label: "Reflect",
+                            sub: "Open diary",
+                        },
+                        {
+                            key: "discover",
+                            label: "Explore",
+                            sub: "Open discover",
+                        },
+                        {
+                            key: "room",
+                            label: "Relax",
+                            sub: "Open room",
+                        },
+                    ].map((item) => (
+                        <button
+                            key={item.key}
+                            type="button"
+                            onClick={() => setActiveTab(item.key)}
+                            style={{
+                                minWidth: 150,
+                                border: `1px solid ${BORDER}`,
+                                borderRadius: 18,
+                                background: SOFT,
+                                padding: 14,
+                                textAlign: "left",
+                                cursor: "pointer",
+                                flex: "0 0 auto",
+                            }}
+                        >
+                            <div
+                                style={{
+                                    color: ACCENT,
+                                    fontWeight: 900,
+                                    fontSize: 18,
+                                    lineHeight: 1.1,
+                                }}
+                            >
+                                {item.label}
+                            </div>
+
+                            <div
+                                style={{
+                                    marginTop: 8,
+                                    color: MUTED,
+                                    fontSize: 13,
+                                    lineHeight: 1.3,
+                                }}
+                            >
+                                {item.sub}
+                            </div>
+                        </button>
+                    ))}
+                </div>
+            </div>
+
+            <div style={{ marginTop: 18 }}>
+                <div style={smallLabel}>Finished</div>
+                <div
+                    style={{
+                        border: `1px solid ${BORDER}`,
+                        borderRadius: 24,
+                        background: CARD,
+                        padding: 10,
+                    }}
+                >
+                    <FinishedBookshelf items={finished} onPick={(b) => setSelectedBook(b)} styles={styles}/>
+                </div>
+            </div>
         </>
     );
 }

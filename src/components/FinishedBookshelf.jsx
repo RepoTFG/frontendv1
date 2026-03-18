@@ -35,9 +35,6 @@ export default function FinishedBookshelf({ items, onPick, styles }) {
                 <h2 style={{ margin: 0, fontSize: 16, letterSpacing: -0.2, color: ACCENT }}>
                     Bookshelf
                 </h2>
-                <div style={{ fontSize: 12, color: MUTED, fontWeight: 800 }}>
-                    {items.length}
-                </div>
             </div>
 
             <div
@@ -139,7 +136,7 @@ export default function FinishedBookshelf({ items, onPick, styles }) {
 
                 {books.length > 0 && (
                     <div style={{ marginTop: 10, fontSize: 12, color: MUTED }}>
-                        Toca un lomo para abrir el libro.
+                        Tap a spine to open the book.
                     </div>
                 )}
             </div>

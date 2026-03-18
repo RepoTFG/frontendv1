@@ -219,7 +219,7 @@ export default function AmbientPlayer({
                     />
 
                     <div style={{ marginTop: 8, fontSize: 12, color: MUTED }}>
-                        Estado: {sessionActive ? (ambiencePlaying ? "Reproduciendo" : "Preparado") : "En pausa"}
+                        Status: {sessionActive ? (ambiencePlaying ? "Playing" : "Ready") : "Paused"}
                     </div>
                 </div>
             </div>
@@ -317,7 +317,7 @@ export default function AmbientPlayer({
                         </label>
 
                         <div style={{ marginTop: 8, fontSize: 12, color: MUTED }}>
-                            Estado: {localPlaying ? "Reproduciendo" : "Pausado"}
+                            Status: {localPlaying ? "Playing" : "Paused"}
                         </div>
 
                         <div>
@@ -374,7 +374,7 @@ export default function AmbientPlayer({
                     onClick={() => {
                         const embed = extractSpotifyEmbedUrl(spotifyInput);
                         if (!embed) {
-                            alert("Introduce un link válido de Spotify.");
+                            alert("Please enter a valid Spotify link.");
                             return;
                         }
                         setSpotifyUrl(embed);
