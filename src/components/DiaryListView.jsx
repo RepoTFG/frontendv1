@@ -41,6 +41,7 @@ export default function DiaryListView({
         fontWeight: 800,
         fontSize: 12,
     };
+
     // para el botón (...)
     const menuBtn = {
         width: 34,
@@ -54,12 +55,14 @@ export default function DiaryListView({
         fontSize: 18,
         lineHeight: 1,
     };
+
     // buscar libros por id
     const bookById = useMemo(() => {
         const m = new Map();
         (Array.isArray(books) ? books : []).forEach((b) => m.set(String(b.id), b));
         return m;
     }, [books]);
+
     // separar notas y citas
     const notesOnly = useMemo(
         () => notes.filter((n) => !(typeof n.quote === "string" && n.quote.trim())),
@@ -69,6 +72,7 @@ export default function DiaryListView({
         () => notes.filter((n) => typeof n.quote === "string" && n.quote.trim()),
         [notes]
     );
+
     // según modal --> mostrar un dataset o otro
     const source = useMemo(() => {
         if (type === "quotes") return quotesOnly;
@@ -106,16 +110,18 @@ export default function DiaryListView({
             return text.includes(query);
         });
     }, [source, q, bookId, type]);
+
     // cambiamos título según contenido
     const getTitle = () => {
         if (type === "quotes") return "All quotes";
         if (type === "reviews") return "All reviews";
         return "All notes";
     };
+
     // review
     const renderReviewCard = (r) => {
         const b = bookById.get(String(r.bookId));
-        const resolvedTitle = b?.title || r.bookTitle || r.title || "Libro";
+        const resolvedTitle = b?.title || r.bookTitle || r.title || "Book";
         const resolvedAuthor = b?.author || r.bookAuthor || r.author || "";
 
         return (
@@ -197,10 +203,11 @@ export default function DiaryListView({
             </button>
         );
     };
+
     // nota o cita
     const renderNoteCard = (n, mode = "note") => {
         const b = bookById.get(String(n.bookId));
-        const title = b?.title || n.bookTitle || "Libro";
+        const title = b?.title || n.bookTitle || "Book";
         const author = b?.author || n.bookAuthor || "";
 
         return (
@@ -233,16 +240,18 @@ export default function DiaryListView({
                             {[author, n.createdAt ? new Date(n.createdAt).toLocaleDateString() : ""].filter(Boolean).join(" · ")}
                         </div>
                     </div>
+
                     {/* botón menú */}
                     <div style={{ position: "relative", flexShrink: 0 }}>
                         <button
                             type="button"
                             onClick={() => setMenuOpenId((prev) => prev === n.id ? null : n.id)}
                             style={menuBtn}
-                            title="Más opciones"
+                            title="More options"
                         >
                             ⋯
                         </button>
+
                         {/* menú abierto --> acciones */}
                         {menuOpenId === n.id && (
                             <div
@@ -301,12 +310,14 @@ export default function DiaryListView({
                         )}
                     </div>
                 </div>
+
                 {/* mood solo notas, no para citas */}
                 {typeof n.mood === "string" && n.mood.trim() && mode === "note" && (
                     <div style={{ marginTop: 12, fontSize: 12, color: MUTED, fontWeight: 800 }}>
                         Mood · <span style={{ color: ACCENT }}>{moodLabel(n.mood)}</span>
                     </div>
                 )}
+
                 {/* cita: quote; si no, preview texto */}
                 {mode === "quote" ? (
                     <div
@@ -373,12 +384,13 @@ export default function DiaryListView({
                         Close
                     </button>
                 </div>
+
                 {/* filtros */}
                 <div style={{ marginTop: 12, display: "grid", gap: 10 }}>
                     <input
                         value={q}
                         onChange={(e) => setQ(e.target.value)}
-                        placeholder="Buscar palabra, cita o texto"
+                        placeholder="Search word, quote or text"
                         style={inputStyle}
                     />
 
@@ -387,19 +399,20 @@ export default function DiaryListView({
                         onChange={(e) => setBookId(e.target.value)}
                         style={inputStyle}
                     >
-                        <option value="">Todos los libros</option>
+                        <option value="">All books</option>
                         {(Array.isArray(books) ? books : []).map((b) => (
                             <option key={b.id} value={b.id}>
-                                {b.title || "Sin título"}
+                                {b.title || "Untitled"}
                             </option>
                         ))}
                     </select>
                 </div>
+
                 {/* resultados */}
                 <div style={{ marginTop: 14, display: "grid", gap: 10 }}>
                     {filteredItems.length === 0 ? (
                         <div style={{ color: MUTED, fontSize: 13 }}>
-                            No hay entradas para mostrar.
+                            No entries to show.
                         </div>
                     ) : type === "reviews" ? (
                         filteredItems.map((r) => renderReviewCard(r))

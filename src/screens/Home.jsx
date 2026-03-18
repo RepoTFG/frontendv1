@@ -37,6 +37,7 @@ export default function Home({
     const [resultsOpen, setResultsOpen] = useState(false);
     const debounceRef = useRef(null);
     const lastQueryRef = useRef("");
+    const firstRenderRef = useRef(true);
 
     useEffect(() => {
         if (!query.trim()) setResultsOpen(false);
@@ -46,6 +47,13 @@ export default function Home({
         const q = query.trim();
 
         if (debounceRef.current) clearTimeout(debounceRef.current);
+
+        // al volver a Home no queremos reabrir resultados auto
+        if (firstRenderRef.current) {
+            firstRenderRef.current = false;
+            lastQueryRef.current = q;
+            return;
+        }
 
         if (q.length < 2) {
             lastQueryRef.current = q;

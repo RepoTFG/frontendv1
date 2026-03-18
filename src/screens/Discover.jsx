@@ -28,6 +28,7 @@ export default function Discover({
     const title = { fontWeight: 900, color: ACCENT };
     const sub = { marginTop: 6, color: MUTED, fontSize: 13 };
     const divider = { height: 1, background: BORDER, margin: "14px 0" };
+
     // cambiamos estilos según se seleccione o no
     const pill = (active) => ({
         padding: "8px 10px",
@@ -68,12 +69,12 @@ export default function Discover({
         const titleText =
             bookOfDay?.book?.title ||
             bookOfDay?.title ||
-            "Placeholder: El nombre del libro";
+            "Placeholder: Book title";
 
         const authorText =
             bookOfDay?.book?.author ||
             bookOfDay?.author ||
-            "Autor/a";
+            "Author";
 
         const coverUrl =
             bookOfDay?.book?.coverUrl ||
@@ -110,7 +111,7 @@ export default function Discover({
 
     const bookOfDayAIData = useMemo(() => {
         const titleText = bookOfDayAI?.title || "Placeholder: AI book";
-        const authorText = bookOfDayAI?.author || "Autor/a";
+        const authorText = bookOfDayAI?.author || "Author";
         const coverUrl = bookOfDayAI?.coverUrl || "";
         const subtitleText = bookOfDayAI?.reason || "";
 
@@ -249,7 +250,7 @@ export default function Discover({
             await api.sendBookOfDayFeedback(token, value);
             setBookOfDayFeedback(value);
         } catch (e) {
-            alert(e.message || "Error guardando feedback");
+            alert(e.message || "Error saving feedback");
         } finally {
             setBookOfDayFeedbackLoading(false);
         }
@@ -263,7 +264,7 @@ export default function Discover({
             await api.sendBookOfDayAIFeedback(token, value);
             setBookOfDayAIFeedback(value);
         } catch (e) {
-            alert(e.message || "Error guardando feedback AI");
+            alert(e.message || "Error saving AI feedback");
         } finally {
             setBookOfDayAIFeedbackLoading(false);
         }
@@ -347,7 +348,7 @@ export default function Discover({
             setSearchTerms(Array.isArray(data?.searchTerms) ? data.searchTerms : []);
             setItems(Array.isArray(data?.recommendations) ? data.recommendations : []);
         } catch (e) {
-            setError(e.message || "Error cargando recomendaciones");
+            setError(e.message || "Error loading recommendations");
             setServerMood("");
             setBlurb("");
             setSearchTerms([]);
@@ -397,7 +398,7 @@ export default function Discover({
             setParticipate(next);
             if (!next) setMatchData(null);
         } catch (e) {
-            alert(e.message || "Error actualizando participate");
+            alert(e.message || "Error updating participate");
         } finally {
             setParticipateLoading(false);
         }
@@ -412,7 +413,7 @@ export default function Discover({
             // match o match null con reason
             setMatchData(data || null);
         } catch (e) {
-            setMatchError(e.message || "Error buscando match");
+            setMatchError(e.message || "Error searching match");
             setMatchData(null);
         } finally {
             setMatchLoading(false);
@@ -645,7 +646,7 @@ export default function Discover({
                         marginBottom: 8,
                     }}
                 >
-                    Guardar en...
+                    Save to...
                 </div>
 
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
@@ -700,7 +701,7 @@ export default function Discover({
                         marginBottom: 8,
                     }}
                 >
-                    Añadir también a...
+                    Add to...
                 </div>
 
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
@@ -739,7 +740,7 @@ export default function Discover({
                                     color: ACCENT,
                                     fontSize: 12,
                                 }}
-                                title={active ? "Quitar de esta shelf" : "Añadir a esta shelf"}
+                                title={active ? "Remove from this shelf" : "Add to this shelf"}
                             >
                                 {shelfName}
                             </button>
@@ -760,7 +761,7 @@ export default function Discover({
     return (
         <div style={sectionWrap}>
             <div style={title}>Discover</div>
-            <div style={sub}>Recomendaciones, mood y conexión con lectores.</div>
+            <div style={sub}>Recommendations, mood, and reader connection.</div>
 
             {/* tabs (for you, mood, connect) */}
             <div style={{ marginTop: 12, display: "flex", gap: 10, flexWrap: "wrap" }}>
@@ -787,7 +788,7 @@ export default function Discover({
                         </div>
 
                         <div style={{ marginTop: 6, color: MUTED, fontSize: 13 }}>
-                            {bookOfDayLoading ? "Cargando..." : (bookOfDayData.subtitle || "")}
+                            {bookOfDayLoading ? "Loading..." : (bookOfDayData.subtitle || "")}
                         </div>
 
                         <div style={{ marginTop: 10 }}>
@@ -800,7 +801,7 @@ export default function Discover({
                                         <button
                                             type="button"
                                             style={pill(bookOfDayFeedback === 1)}
-                                            title="Buena recomendación"
+                                            title="Good recommendation"
                                             disabled={bookOfDayFeedbackLoading || bookOfDayLoading}
                                             onClick={() => sendFeedback(1)}
                                         >
@@ -809,7 +810,7 @@ export default function Discover({
                                         <button
                                             type="button"
                                             style={pill(bookOfDayFeedback === -1)}
-                                            title="Mala recomendación"
+                                            title="Bad recommendation"
                                             disabled={bookOfDayFeedbackLoading || bookOfDayLoading}
                                             onClick={() => sendFeedback(-1)}
                                         >
@@ -849,7 +850,7 @@ export default function Discover({
                                     <button
                                         type="button"
                                         style={pill(bookOfDayAIFeedback === 1)}
-                                        title="Buena recomendación AI"
+                                        title="Good AI recommendation"
                                         disabled={bookOfDayAIFeedbackLoading || bookOfDayAILoading}
                                         onClick={() => sendAIFeedback(1)}
                                     >
@@ -858,7 +859,7 @@ export default function Discover({
                                     <button
                                         type="button"
                                         style={pill(bookOfDayAIFeedback === -1)}
-                                        title="Mala recomendación AI"
+                                        title="Bad AI recommendation"
                                         disabled={bookOfDayAIFeedbackLoading || bookOfDayAILoading}
                                         onClick={() => sendAIFeedback(-1)}
                                     >
@@ -894,7 +895,7 @@ export default function Discover({
                             type="button"
                             style={pill(false)}
                             onClick={() => setMoodExpanded((v) => !v)}
-                            title={moodExpanded ? "Contraer" : "Expandir"}
+                            title={moodExpanded ? "Collapse" : "Expand"}
                         >
                             {moodExpanded ? "▾" : "▸"}
                         </button>
@@ -924,7 +925,7 @@ export default function Discover({
                             <input
                                 value={moodText}
                                 onChange={(e) => setMoodText(e.target.value)}
-                                placeholder='Describe cómo te sientes (opcional), ej: "me siento saturado"'
+                                placeholder='Describe how you feel (optional), e.g. "I feel overwhelmed"'
                                 style={inputStyle}
                             />
 
@@ -935,7 +936,7 @@ export default function Discover({
                                     onClick={() => fetchMoodRecs({ mood: "", moodText })}
                                     disabled={loading}
                                 >
-                                    {loading ? "Cargando..." : "Get recommendations"}
+                                    {loading ? "Loading..." : "Get recommendations"}
                                 </button>
 
                                 <button
@@ -966,7 +967,7 @@ export default function Discover({
 
                             {searchTerms.length > 0 && !error && (
                                 <div style={{ color: MUTED, fontSize: 12 }}>
-                                    Búsqueda usada: {searchTerms.join(" · ")}
+                                    Search used: {searchTerms.join(" · ")}
                                 </div>
                             )}
 
@@ -979,13 +980,13 @@ export default function Discover({
                                             key={(b.key || "") + (b.title || "")}
                                             coverUrl={cover}
                                             titleText={b.title}
-                                            subtitleText={`${b.author || "Autor desconocido"}${b.firstPublishYear ? ` · ${b.firstPublishYear}` : ""}`}
+                                            subtitleText={`${b.author || "Unknown author"}${b.firstPublishYear ? ` · ${b.firstPublishYear}` : ""}`}
                                             rightSlot={
                                                 <>
-                                                    <button type="button" style={pill(false)} title="Buena recomendación">
+                                                    <button type="button" style={pill(false)} title="Good recommendation">
                                                         👍
                                                     </button>
-                                                    <button type="button" style={pill(false)} title="Mala recomendación">
+                                                    <button type="button" style={pill(false)} title="Bad recommendation">
                                                         👎
                                                     </button>
                                                 </>
@@ -996,7 +997,7 @@ export default function Discover({
 
                                 {!loading && items.length === 0 && !error && (
                                     <div style={{ color: MUTED, fontSize: 13 }}>
-                                        Elige un mood o escribe cómo te sientes para ver recomendaciones.
+                                        Choose a mood or write how you feel to see recommendations.
                                     </div>
                                 )}
                             </div>
@@ -1012,7 +1013,7 @@ export default function Discover({
                         <div>
                             <div style={{ fontWeight: 900, color: ACCENT }}>Connect with a reader</div>
                             <div style={{ marginTop: 6, color: MUTED, fontSize: 13 }}>
-                                Participa para que el sistema encuentre lectores afines.
+                                Join in so the system can find like-minded readers.
                             </div>
                         </div>
 
@@ -1031,7 +1032,7 @@ export default function Discover({
 
                     {!participate ? (
                         <div style={{ color: MUTED, fontSize: 13 }}>
-                            Activa <b>Participate</b> para ver el matching.
+                            Turn on <b>Participate</b> to see your match.
                         </div>
                     ) : (
                         <div style={{ display: "grid", gap: 10 }}>
@@ -1045,7 +1046,7 @@ export default function Discover({
                             >
                                 <div style={{ fontWeight: 900, color: ACCENT }}>Find your twin reader</div>
                                 <div style={{ marginTop: 6, color: MUTED, fontSize: 13 }}>
-                                    luego mostraremos: match %, shared genres, shared mood y recomendaciones cruzadas
+                                    Then you will see: match %, shared genres, shared mood, and cross recommendations.
                                 </div>
 
                                 <div style={{ marginTop: 10, display: "flex", gap: 10, flexWrap: "wrap" }}>
@@ -1055,7 +1056,7 @@ export default function Discover({
                                         onClick={runMatch}
                                         disabled={matchLoading || participateLoading}
                                     >
-                                        {matchLoading ? "Buscando..." : "Search reader"}
+                                        {matchLoading ? "Searching..." : "Search reader"}
                                     </button>
                                     <button
                                         type="button"
@@ -1081,8 +1082,8 @@ export default function Discover({
                                 {matchData && matchData.reason && !normalizedMatch ? (
                                     <div style={{ marginTop: 10, color: MUTED, fontSize: 13 }}>
                                         {matchData.reason === "no_candidates"
-                                            ? "No hay candidatos todavía (prueba con otra cuenta activando Participate)."
-                                            : "No se ha encontrado match todavía."}
+                                            ? "There are no candidates yet (try another account with Participate turned on)."
+                                            : "No match has been found yet."}
                                     </div>
                                 ) : null}
                             </div>
@@ -1117,7 +1118,7 @@ export default function Discover({
                                                 const cover = r.coverId
                                                     ? `https://covers.openlibrary.org/b/id/${r.coverId}-M.jpg`
                                                     : (r.coverUrl || "");
-                                                const subtitleText = `${r.author || "Autor/a"}${r.reason ? ` · ${r.reason}` : ""}`;
+                                                const subtitleText = `${r.author || "Author"}${r.reason ? ` · ${r.reason}` : ""}`;
                                                 return (
                                                     <CardRow
                                                         key={(r.workKey || r.key || "") + idx}
@@ -1131,7 +1132,7 @@ export default function Discover({
                                         {(!normalizedMatch.recommendations ||
                                             normalizedMatch.recommendations.length === 0) ? (
                                             <div style={{ color: MUTED, fontSize: 13 }}>
-                                                No hay recomendaciones todavía (prueba Search new reader).
+                                                There are no recommendations yet (try Search new reader).
                                             </div>
                                         ) : null}
                                     </div>

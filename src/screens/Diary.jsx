@@ -67,6 +67,7 @@ export default function Diary({ books, setSelectedBook, styles }) {
         (Array.isArray(books) ? books : []).forEach((b) => m.set(String(b.id), b));
         return m;
     }, [books]);
+
     // carga de notas y reviews
     const load = useCallback(async () => {
         try {
@@ -81,14 +82,15 @@ export default function Diary({ books, setSelectedBook, styles }) {
             setNotes(Array.isArray(notesData) ? notesData : []);
             setReviews(Array.isArray(reviewsData) ? reviewsData : []);
         } catch (e) {
-            alert(e.message || "Error cargando el Diary");
+            alert(e.message || "Error loading the Diary");
             setNotes([]);
             setReviews([]);
         } finally {
             setLoading(false);
         }
     }, []);
-    //cargamos
+
+    // cargamos
     useEffect(() => {
         load();
     }, [load]);
@@ -148,12 +150,14 @@ export default function Diary({ books, setSelectedBook, styles }) {
         fontWeight: 800,
         fontSize: 12,
     };
+
     // para estados vacíos
     const renderEmpty = (text) => (
         <div style={{ color: MUTED, fontSize: 13, lineHeight: 1.45 }}>
             {text}
         </div>
     );
+
     // preparar modal para crear nueva entrada
     const openNewEntry = () => {
         const fallback = Array.isArray(books) && books[0]?.id ? String(books[0].id) : "";
@@ -171,11 +175,12 @@ export default function Diary({ books, setSelectedBook, styles }) {
         setNewType("note");
         setNewOpen(true);
     };
+
     // crear o nota o review
     const createEntry = async () => {
         try {
             if (!draftBookId) {
-                alert("Selecciona un libro para guardar la entrada.");
+                alert("Select a book before saving the entry.");
                 return;
             }
 
@@ -184,7 +189,7 @@ export default function Diary({ books, setSelectedBook, styles }) {
 
             if (newType === "note") {
                 if (!noteText.trim()) {
-                    alert("Escribe tu nota antes de guardar.");
+                    alert("Write your note before saving.");
                     return;
                 }
 
@@ -203,9 +208,10 @@ export default function Diary({ books, setSelectedBook, styles }) {
                 await load();
                 return;
             }
+
             // crear review
             if (!reviewText.trim()) {
-                alert("Escribe tu reseña antes de guardar.");
+                alert("Write your review before saving.");
                 return;
             }
 
@@ -222,11 +228,12 @@ export default function Diary({ books, setSelectedBook, styles }) {
             setReviewIsPublic(false);
             await load();
         } catch (e) {
-            alert(e.message || "Error guardando la entrada");
+            alert(e.message || "Error saving the entry");
         } finally {
             setSaving(false);
         }
     };
+
     // modal edición
     const empezarEditarNota = (n) => {
         setEditingNoteId(n.id);
@@ -236,7 +243,8 @@ export default function Diary({ books, setSelectedBook, styles }) {
         setEditMood(n.mood || "");
         setEditOpen(true);
     };
-    //cerrar y limpiar modal edición
+
+    // cerrar y limpiar modal edición
     const cancelarEditarNota = () => {
         setEditingNoteId(null);
         setEditText("");
@@ -251,7 +259,7 @@ export default function Diary({ books, setSelectedBook, styles }) {
             if (!noteId) return;
 
             if (!editText.trim()) {
-                alert("Escribe tu nota antes de guardar.");
+                alert("Write your note before saving.");
                 return;
             }
 
@@ -263,6 +271,7 @@ export default function Diary({ books, setSelectedBook, styles }) {
                 quote: editQuote || "",
                 mood: editMood || "",
             });
+
             // eliminar posible borrador
             setDraftAnswers((prev) => {
                 const next = { ...prev };
@@ -273,7 +282,7 @@ export default function Diary({ books, setSelectedBook, styles }) {
             cancelarEditarNota();
             await load();
         } catch (e) {
-            alert(e.message || "Error guardando la edición");
+            alert(e.message || "Error saving the edit");
         }
     };
 
@@ -281,7 +290,7 @@ export default function Diary({ books, setSelectedBook, styles }) {
         try {
             if (!noteId) return;
 
-            const ok = window.confirm("¿Seguro que quieres borrar esta nota?");
+            const ok = window.confirm("Are you sure you want to delete this note?");
             if (!ok) return;
 
             const token = await auth.currentUser.getIdToken();
@@ -295,9 +304,10 @@ export default function Diary({ books, setSelectedBook, styles }) {
 
             await load();
         } catch (e) {
-            alert(e.message || "Error borrando la nota");
+            alert(e.message || "Error deleting the note");
         }
     };
+
     // crea reflexión por IA
     const reflectNote = async (n) => {
         try {
@@ -311,11 +321,12 @@ export default function Diary({ books, setSelectedBook, styles }) {
                 await load();
             }
         } catch (e) {
-            alert(e.message || "Error generando la reflexión");
+            alert(e.message || "Error generating the reflection");
         } finally {
             setAiLoadingId(null);
         }
     };
+
     // respuestas: prioriza borrador no guardado
     const getAnswersForNote = useCallback((n) => {
         const fromDraft = draftAnswers[n.id];
@@ -328,7 +339,8 @@ export default function Diary({ books, setSelectedBook, styles }) {
             saved[2] || "",
         ];
     }, [draftAnswers]);
-    //actualizar respuesta en el borrador local
+
+    // actualizar respuesta en el borrador local
     const updateDraftAnswer = (noteId, idx, value, noteObj) => {
         setDraftAnswers((prev) => {
             const current = Array.isArray(prev[noteId])
@@ -346,6 +358,7 @@ export default function Diary({ books, setSelectedBook, styles }) {
             };
         });
     };
+
     // guardar en backend respuestas de AICompanion
     const saveCompanionAnswers = async (noteId, noteObj) => {
         try {
@@ -361,7 +374,7 @@ export default function Diary({ books, setSelectedBook, styles }) {
 
             await load();
         } catch (e) {
-            alert(e.message || "Error guardando las reflexiones");
+            alert(e.message || "Error saving the reflections");
         } finally {
             setSavingAnswersId(null);
         }
@@ -372,13 +385,14 @@ export default function Diary({ books, setSelectedBook, styles }) {
         if (!base) return "";
         return base.length > 180 ? `${base.slice(0, 180)}…` : base;
     };
+
     // abrir detalle libro
     const openBook = (n) => {
         const b = bookById.get(String(n.bookId));
 
         const fallbackBook = {
             id: n.bookId,
-            title: n.bookTitle || "Libro",
+            title: n.bookTitle || "Book",
             author: n.bookAuthor || "",
             cover: { url: n.bookCoverUrl || "" },
             status: "to_read",
@@ -390,6 +404,7 @@ export default function Diary({ books, setSelectedBook, styles }) {
 
         setSelectedBook(b || fallbackBook);
     };
+
     // separar notas y citas
     const notesOnly = useMemo(
         () => notes.filter((n) => !(typeof n.quote === "string" && n.quote.trim())),
@@ -399,6 +414,7 @@ export default function Diary({ books, setSelectedBook, styles }) {
         () => notes.filter((n) => typeof n.quote === "string" && n.quote.trim()),
         [notes]
     );
+
     // ordenadas por fecha
     const sortedNotes = useMemo(
         () => [...notesOnly].sort((a, b) => new Date(b.updatedAt || b.createdAt || 0) - new Date(a.updatedAt || a.createdAt || 0)),
@@ -419,6 +435,7 @@ export default function Diary({ books, setSelectedBook, styles }) {
         borderRadius: 24,
         padding: 14,
     };
+
     // cabecera para cada bloque diary
     const sectionTitleRow = (title, subtitle, onViewAll = null) => (
         <div
@@ -453,7 +470,7 @@ export default function Diary({ books, setSelectedBook, styles }) {
 
     const renderNotePreview = (n) => {
         const b = bookById.get(String(n.bookId));
-        const title = b?.title || n.bookTitle || "Libro";
+        const title = b?.title || n.bookTitle || "Book";
         const author = b?.author || n.bookAuthor || "";
 
         return (
@@ -507,10 +524,11 @@ export default function Diary({ books, setSelectedBook, styles }) {
             </button>
         );
     };
+
     // preview grande cita/frase
     const renderQuotePreview = (n, big = false) => {
         const b = bookById.get(String(n.bookId));
-        const title = b?.title || n.bookTitle || "Libro";
+        const title = b?.title || n.bookTitle || "Book";
 
         return (
             <button
@@ -550,10 +568,11 @@ export default function Diary({ books, setSelectedBook, styles }) {
             </button>
         );
     };
+
     // preview review
     const renderReviewPreview = (r) => {
         const b = bookById.get(String(r.bookId));
-        const resolvedTitle = b?.title || r.bookTitle || r.title || "Libro";
+        const resolvedTitle = b?.title || r.bookTitle || r.title || "Book";
         const resolvedAuthor = b?.author || r.bookAuthor || r.author || "";
 
         return (
@@ -668,7 +687,7 @@ export default function Diary({ books, setSelectedBook, styles }) {
                             whiteSpace: "nowrap",
                             flexShrink: 0,
                         }}
-                        title="Crear nueva entrada"
+                        title="Create new entry"
                     >
                         + New entry
                     </button>
@@ -718,6 +737,7 @@ export default function Diary({ books, setSelectedBook, styles }) {
                         </button>
                     </div>
                 </div>
+
                 {/* secciones: notas, citas, review */}
                 <div>
                     <div style={{ marginBottom: 12, color: MUTED, fontSize: 14, fontWeight: 800 }}>
@@ -740,9 +760,9 @@ export default function Diary({ books, setSelectedBook, styles }) {
                             )}
 
                             {loading ? (
-                                <div style={{ opacity: 0.7 }}>Cargando entradas...</div>
+                                <div style={{ opacity: 0.7 }}>Loading entries...</div>
                             ) : sortedNotes.length === 0 ? (
-                                renderEmpty("Todavía no hay notas.")
+                                renderEmpty("There are no notes yet.")
                             ) : (
                                 <div style={{ display: "grid", gap: 10 }}>
                                     {sortedNotes.slice(0, 1).map((n) => renderNotePreview(n))}
@@ -760,9 +780,9 @@ export default function Diary({ books, setSelectedBook, styles }) {
                             )}
 
                             {loading ? (
-                                <div style={{ opacity: 0.7 }}>Cargando entradas...</div>
+                                <div style={{ opacity: 0.7 }}>Loading entries...</div>
                             ) : sortedQuotes.length === 0 ? (
-                                renderEmpty("Todavía no hay frases destacadas.")
+                                renderEmpty("There are no highlighted quotes yet.")
                             ) : (
                                 <div style={{ display: "grid", gap: 10 }}>
                                     {sortedQuotes.slice(0, 1).map((n) => renderQuotePreview(n, true))}
@@ -780,9 +800,9 @@ export default function Diary({ books, setSelectedBook, styles }) {
                             )}
 
                             {loading ? (
-                                <div style={{ opacity: 0.7 }}>Cargando entradas...</div>
+                                <div style={{ opacity: 0.7 }}>Loading entries...</div>
                             ) : sortedReviews.length === 0 ? (
-                                renderEmpty("Todavía no has escrito ninguna reseña.")
+                                renderEmpty("You have not written any reviews yet.")
                             ) : (
                                 <div style={{ display: "grid", gap: 10 }}>
                                     {sortedReviews.slice(0, 1).map((r) => renderReviewPreview(r))}
@@ -792,6 +812,7 @@ export default function Diary({ books, setSelectedBook, styles }) {
                     </div>
                 </div>
             </div>
+
             {/* modal para listar todas notas, reviews, citas */}
             {listViewOpen && (
                 <DiaryListView
@@ -809,6 +830,7 @@ export default function Diary({ books, setSelectedBook, styles }) {
                     getPreviewText={getPreviewText}
                 />
             )}
+
             {/* modal IA */}
             {companionModalOpen && (
                 <AICompanionModal
@@ -825,6 +847,7 @@ export default function Diary({ books, setSelectedBook, styles }) {
                     moodLabel={moodLabel}
                 />
             )}
+
             {/* modal crear nueva entrada */}
             {newOpen && (
                 <div
@@ -854,13 +877,14 @@ export default function Diary({ books, setSelectedBook, styles }) {
                         <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "center" }}>
                             <div style={{ fontWeight: 900, color: ACCENT }}>New entry</div>
                             <button onClick={() => setNewOpen(false)} style={{ ...ghostBtn, width: "auto" }} type="button">
-                                Cerrar
+                                Close
                             </button>
                         </div>
+
                         {/* seleccionar nota o review */}
                         <div style={{ marginTop: 12, display: "flex", gap: 8, flexWrap: "wrap" }}>
                             <button type="button" onClick={() => setNewType("note")} style={pill(newType === "note")}>
-                                Nota
+                                Note
                             </button>
                             <button type="button" onClick={() => setNewType("review")} style={pill(newType === "review")}>
                                 Review
@@ -874,25 +898,26 @@ export default function Diary({ books, setSelectedBook, styles }) {
                                 onChange={(e) => setDraftBookId(e.target.value)}
                                 style={inputStyle}
                             >
-                                <option value="">Selecciona un libro</option>
+                                <option value="">Select a book</option>
                                 {(Array.isArray(books) ? books : []).map((b) => (
                                     <option key={b.id} value={b.id}>
-                                        {b.title || "Sin título"}
+                                        {b.title || "Untitled"}
                                     </option>
                                 ))}
                             </select>
+
                             {/* crear nota */}
                             {newType === "note" ? (
                                 <>
                                     <div style={{ display: "grid", gap: 6 }}>
                                         <div style={{ fontSize: 12, color: MUTED, fontWeight: 800 }}>
-                                            Mood (opcional)
+                                            Mood (optional)
                                         </div>
                                         <select
                                             value={noteMood}
                                             onChange={(e) => setNoteMood(e.target.value)}
                                             style={inputStyle}
-                                            title="¿Cómo te sientes al escribir esta nota?"
+                                            title="How do you feel while writing this note?"
                                         >
                                             <option value="">—</option>
                                             {MOODS.filter((m) => m !== "").map((m) => (
@@ -904,14 +929,14 @@ export default function Diary({ books, setSelectedBook, styles }) {
                                     </div>
 
                                     <input
-                                        placeholder="Capítulo / parte (opcional)"
+                                        placeholder="Chapter / part (optional)"
                                         value={noteChapter}
                                         onChange={(e) => setNoteChapter(e.target.value)}
                                         style={inputStyle}
                                     />
 
                                     <textarea
-                                        placeholder="Escribe tu nota..."
+                                        placeholder="Write your note..."
                                         value={noteText}
                                         onChange={(e) => setNoteText(e.target.value)}
                                         rows={4}
@@ -919,7 +944,7 @@ export default function Diary({ books, setSelectedBook, styles }) {
                                     />
 
                                     <input
-                                        placeholder="Frase destacada (opcional)"
+                                        placeholder="Highlighted quote (optional)"
                                         value={noteQuote}
                                         onChange={(e) => setNoteQuote(e.target.value)}
                                         style={inputStyle}
@@ -931,11 +956,11 @@ export default function Diary({ books, setSelectedBook, styles }) {
                                         type="button"
                                         disabled={saving}
                                     >
-                                        {saving ? "Guardando..." : "Guardar nota"}
+                                        {saving ? "Saving..." : "Save note"}
                                     </button>
                                 </>
                             ) : (
-                                //crear review
+                                // crear review
                                 <>
                                     <select
                                         value={reviewRating}
@@ -955,7 +980,7 @@ export default function Diary({ books, setSelectedBook, styles }) {
                                     </select>
 
                                     <textarea
-                                        placeholder="Escribe tu reseña del libro..."
+                                        placeholder="Write your review of the book..."
                                         value={reviewText}
                                         onChange={(e) => setReviewText(e.target.value)}
                                         rows={4}
@@ -963,7 +988,7 @@ export default function Diary({ books, setSelectedBook, styles }) {
                                     />
 
                                     <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
-                                        <div style={{ fontSize: 12, color: MUTED, fontWeight: 800, minWidth: 120 }}>Modo:</div>
+                                        <div style={{ fontSize: 12, color: MUTED, fontWeight: 800, minWidth: 120 }}>Mode:</div>
 
                                         <button
                                             onClick={() => {
@@ -975,7 +1000,7 @@ export default function Diary({ books, setSelectedBook, styles }) {
                                             }}
                                             type="button"
                                         >
-                                            Solo para mí
+                                            Just for me
                                         </button>
 
                                         <button
@@ -987,9 +1012,9 @@ export default function Diary({ books, setSelectedBook, styles }) {
                                                 border: `1px solid ${reviewIsPublic ? ACCENT : BORDER}`,
                                             }}
                                             type="button"
-                                            title="Publica tu reseña sin mostrar tu identidad"
+                                            title="Publish your review without showing your identity"
                                         >
-                                            Publicar anónima
+                                            Publish anonymously
                                         </button>
                                     </div>
 
@@ -999,12 +1024,12 @@ export default function Diary({ books, setSelectedBook, styles }) {
                                         type="button"
                                         disabled={saving}
                                     >
-                                        {saving ? "Guardando..." : reviewIsPublic ? "Guardar y publicar anónimamente" : "Guardar reseña (privada)"}
+                                        {saving ? "Saving..." : reviewIsPublic ? "Save and publish anonymously" : "Save review (private)"}
                                     </button>
 
                                     <div style={{ fontSize: 12, color: MUTED }}>
-                                        Estado actual:{" "}
-                                        <strong style={{ color: ACCENT }}>{reviewIsPublic ? "Publicada (anónima)" : "Privada"}</strong>
+                                        Current status:{" "}
+                                        <strong style={{ color: ACCENT }}>{reviewIsPublic ? "Published (anonymous)" : "Private"}</strong>
                                     </div>
                                 </>
                             )}
@@ -1012,6 +1037,7 @@ export default function Diary({ books, setSelectedBook, styles }) {
                     </div>
                 </div>
             )}
+
             {/* modal editar nota */}
             {editOpen && (
                 <div
@@ -1041,20 +1067,20 @@ export default function Diary({ books, setSelectedBook, styles }) {
                         <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "center" }}>
                             <div style={{ fontWeight: 900, color: ACCENT }}>Edit note</div>
                             <button onClick={cancelarEditarNota} style={{ ...ghostBtn, width: "auto" }} type="button">
-                                Cerrar
+                                Close
                             </button>
                         </div>
 
                         <div style={{ display: "grid", gap: 10, marginTop: 12 }}>
                             <div style={{ display: "grid", gap: 6 }}>
                                 <div style={{ fontSize: 12, color: MUTED, fontWeight: 800 }}>
-                                    Mood (opcional)
+                                    Mood (optional)
                                 </div>
                                 <select
                                     value={editMood}
                                     onChange={(e) => setEditMood(e.target.value)}
                                     style={inputStyle}
-                                    title="Actualizar mood de la nota"
+                                    title="Update note mood"
                                 >
                                     <option value="">—</option>
                                     {MOODS.filter((m) => m !== "").map((m) => (
@@ -1068,7 +1094,7 @@ export default function Diary({ books, setSelectedBook, styles }) {
                             <input
                                 value={editChapter}
                                 onChange={(e) => setEditChapter(e.target.value)}
-                                placeholder="Capítulo / parte (opcional)"
+                                placeholder="Chapter / part (optional)"
                                 style={inputStyle}
                             />
 
@@ -1082,7 +1108,7 @@ export default function Diary({ books, setSelectedBook, styles }) {
                             <input
                                 value={editQuote}
                                 onChange={(e) => setEditQuote(e.target.value)}
-                                placeholder="Frase destacada (opcional)"
+                                placeholder="Highlighted quote (optional)"
                                 style={inputStyle}
                             />
 
