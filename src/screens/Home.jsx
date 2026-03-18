@@ -275,20 +275,27 @@ export default function Home({
                                                         { key: "paused", label: "Interrupted" },
                                                         { key: "finished", label: "Finished" },
                                                     ].map((opt) => {
-                                                        const active = (addStatusByKey[doc.key] || "") === opt.key;
+                                                        const currentStatus =
+                                                            addStatusByKey[doc.key] ??
+                                                            existingBook?.status ??
+                                                            "";
+
+                                                        const active = currentStatus === opt.key;
 
                                                         return (
                                                             <button
                                                                 key={opt.key}
                                                                 type="button"
                                                                 onClick={() => {
+                                                                    const nextStatus = currentStatus === opt.key ? "" : opt.key;
+
                                                                     // guardamos status seleccionado (UI)
-                                                                    setAddStatusByKey((prev) => ({ ...prev, [doc.key]: opt.key }));
+                                                                    setAddStatusByKey((prev) => ({ ...prev, [doc.key]: nextStatus }));
 
                                                                     // acción inmediata (como en detalle libro)
-                                                                    addFromResult(doc, { status: opt.key });
+                                                                    addFromResult(doc, { status: nextStatus });
 
-                                                                    setResultsOpen(false);
+                                                                    // setResultsOpen(false); --> quitamos para que no se cierre al añadir a una shelf auto
                                                                 }}
                                                                 style={{
                                                                     padding: "8px 10px",
@@ -321,7 +328,7 @@ export default function Home({
                                                             marginBottom: 8,
                                                         }}
                                                     >
-                                                        Añadir también a...
+                                                        Add to...
                                                     </div>
 
                                                     <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
@@ -345,7 +352,7 @@ export default function Home({
                                                                         // si el libro existe -> toggle real (igual que detalle libro)
                                                                         if (existingBook?.id) {
                                                                             toggleBookShelf(existingBook.id, shelfName);
-                                                                            setResultsOpen(false);
+                                                                            // setResultsOpen(false); --> al añadir a shelf no quiero que se cierre auto (lo quitamos)
                                                                             return;
                                                                         }
 
@@ -355,7 +362,7 @@ export default function Home({
                                                                             shelves: [shelfName],
                                                                         });
 
-                                                                        setResultsOpen(false);
+                                                                        // setResultsOpen(false); --> al añadir a shelf no quiero que se cierre auto (lo quitamos)
                                                                     }}
                                                                     style={{
                                                                         padding: "8px 10px",
