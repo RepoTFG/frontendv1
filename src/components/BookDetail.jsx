@@ -49,6 +49,7 @@ export default function BookDetail({
                                        setNoteMood,
                                        editMood,
                                        setEditMood,
+                                       addFromPreview,
                                    }) {
     // definimos el estilo
     // colores:
@@ -90,6 +91,7 @@ export default function BookDetail({
                                 "—";
     // modo libro borrado (abierto desde Diary)
     const isDeleted = !!book?._deleted;
+    const isDiscoverPreview = !!book?._discoverPreview;
 
     useEffect(() => {
         const rc = Number.isFinite(book?.readCount) ? book.readCount : 0;
@@ -196,6 +198,7 @@ export default function BookDetail({
 
             if (!book?.id) return;
             if (workKey || authorKey) return;
+            if (isDiscoverPreview) return;
 
             const q = `${titleFromBook} ${authorFromBook}`.trim();
             if (!q) return;
@@ -243,7 +246,7 @@ export default function BookDetail({
         return () => {
             alive = false;
         };
-    }, [book?.id, workKey, authorKey, authorFromBook, titleFromBook, user, isDeleted]);
+    }, [book?.id, workKey, authorKey, authorFromBook, titleFromBook, user, isDeleted, isDiscoverPreview]);
 
     // cargar synopsis desde Open Library (works)
     useEffect(() => {
@@ -304,7 +307,7 @@ export default function BookDetail({
     const guardarRelecturas = async () => {
         try {
             if (!user) return;
-            if (isDeleted) return;
+            if (isDeleted || isDiscoverPreview) return;
 
             const token = await user.getIdToken();
 
@@ -321,8 +324,26 @@ export default function BookDetail({
 
     const handleToggleStatus = async (statusKey) => {
         if (isDeleted) return;
+
+        if (isDiscoverPreview) {
+            const nextStatus = book.status === statusKey ? "" : statusKey;
+            await addFromPreview(book, { status: nextStatus });
+            return;
+        }
+
         const nextStatus = book.status === statusKey ? "" : statusKey;
         await cambiarEstado(book.id, nextStatus);
+    };
+
+    const handleToggleShelf = async (shelfName) => {
+        if (isDeleted) return;
+
+        if (isDiscoverPreview) {
+            await addFromPreview(book, { shelves: [shelfName] });
+            return;
+        }
+
+        await toggleBookShelf(book.id, shelfName);
     };
 
     return (
@@ -447,6 +468,23 @@ export default function BookDetail({
                             This book is no longer in your library. It is shown only as a reference from your notes.
                         </div>
                     )}
+
+                    {isDiscoverPreview && (
+                        <div
+                            style={{
+                                marginTop: 10,
+                                border: `1px solid ${BORDER}`,
+                                borderRadius: 16,
+                                background: SOFT,
+                                padding: 12,
+                                color: ACCENT,
+                                fontSize: 13,
+                                fontWeight: 700,
+                            }}
+                        >
+                            You found this book through a public review. You can explore it and add it to your library.
+                        </div>
+                    )}
                 </div>
             </div>
             <div style={{ padding: 16, maxWidth: 520, margin: "0 auto" }}>
@@ -489,8 +527,14 @@ export default function BookDetail({
                             {/* botón relectura */}
                             <button
                                 type="button"
-                                onClick={() => !isDeleted && setRereadOpen(true)}
-                                title={isDeleted ? "Unavailable (deleted book)" : "Edit rereads"}
+                                onClick={() => !isDeleted && !isDiscoverPreview && setRereadOpen(true)}
+                                title={
+                                    isDeleted
+                                        ? "Unavailable (deleted book)"
+                                        : isDiscoverPreview
+                                            ? "Unavailable in preview mode"
+                                            : "Edit rereads"
+                                }
                                 style={{
                                     position: "absolute",
                                     top: 8,
@@ -500,14 +544,14 @@ export default function BookDetail({
                                     background: "rgba(255,255,255,0.92)",
                                     padding: "6px 10px",
                                     fontWeight: 900,
-                                    cursor: isDeleted ? "not-allowed" : "pointer",
+                                    cursor: isDeleted || isDiscoverPreview ? "not-allowed" : "pointer",
                                     color: ACCENT,
                                     display: "inline-flex",
                                     alignItems: "center",
                                     gap: 6,
-                                    opacity: isDeleted ? 0.55 : 1,
+                                    opacity: isDeleted || isDiscoverPreview ? 0.55 : 1,
                                 }}
-                                disabled={isDeleted}
+                                disabled={isDeleted || isDiscoverPreview}
                             >
                                 <span>↻</span>
                                 {readCount > 0 && <span>{readCount}</span>}
@@ -571,7 +615,7 @@ export default function BookDetail({
                                             return (
                                                 <button
                                                     key={s}
-                                                    onClick={() => !isDeleted && toggleBookShelf(book.id, s)}
+                                                    onClick={() => !isDeleted && handleToggleShelf(s)}
                                                     style={{
                                                         padding: "8px 10px",
                                                         borderRadius: 999,
@@ -595,27 +639,29 @@ export default function BookDetail({
                                 </div>
                             )}
 
-                            <div style={{ marginTop: 14 }}>
-                                <button
-                                    onClick={() => !isDeleted && borrarLibro(book.id)}
-                                    style={{
-                                        padding: "12px 14px",
-                                        borderRadius: 14,
-                                        border: `1px solid ${BORDER}`,
-                                        background: CARD,
-                                        cursor: isDeleted ? "not-allowed" : "pointer",
-                                        width: "100%",
-                                        fontWeight: 900,
-                                        color: ACCENT,
-                                        opacity: isDeleted ? 0.55 : 1,
-                                    }}
-                                    type="button"
-                                    disabled={isDeleted}
-                                    title={isDeleted ? "Unavailable (deleted book)" : undefined}
-                                >
-                                    🗑️ Delete book
-                                </button>
-                            </div>
+                            {!isDiscoverPreview && (
+                                <div style={{ marginTop: 14 }}>
+                                    <button
+                                        onClick={() => !isDeleted && borrarLibro(book.id)}
+                                        style={{
+                                            padding: "12px 14px",
+                                            borderRadius: 14,
+                                            border: `1px solid ${BORDER}`,
+                                            background: CARD,
+                                            cursor: isDeleted ? "not-allowed" : "pointer",
+                                            width: "100%",
+                                            fontWeight: 900,
+                                            color: ACCENT,
+                                            opacity: isDeleted ? 0.55 : 1,
+                                        }}
+                                        type="button"
+                                        disabled={isDeleted}
+                                        title={isDeleted ? "Unavailable (deleted book)" : undefined}
+                                    >
+                                        🗑️ Delete book
+                                    </button>
+                                </div>
+                            )}
                         </div>
                     </div>
                 </div>
@@ -645,7 +691,7 @@ export default function BookDetail({
                 </div>
 
                 {/* review --> sección desplegable */}
-                {!isDeleted && (
+                {!isDeleted && !isDiscoverPreview && (
                     <div style={{ marginTop: 14 }}>
                         {sectionHeader("Review", "review")}
                         {openPanel === "review" && (
@@ -820,7 +866,7 @@ export default function BookDetail({
                 )}
 
                 {/* diary --> sección deplegable*/}
-                {!isDeleted && (
+                {!isDeleted && !isDiscoverPreview && (
                     <div style={{ marginTop: 14 }}>
                         {sectionHeader("Diary", "diary")}
                         {openPanel === "diary" && (

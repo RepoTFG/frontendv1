@@ -187,6 +187,19 @@ export const api = {
     },
     // reviews todas (publicas y privadas)
     getMyReviews: (token) => authFetch("/api/reviews/mine", { token }),
+    // reviews anónimas
+    getReviewsFeed: (token, params = {}) => {
+        const qs = new URLSearchParams();
+
+        if (params.q) qs.set("q", params.q);
+        if (params.limit) qs.set("limit", String(params.limit));
+
+        const query = qs.toString();
+        const path = query ? `/api/reviews/feed?${query}` : "/api/reviews/feed";
+
+        return authFetch(path, { token });
+    },
+
     // mood recommendation
     //discoverMood: (token, payload) =>
     //    authFetch("/api/discover/mood", {

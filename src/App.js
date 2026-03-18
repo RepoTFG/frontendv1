@@ -246,9 +246,9 @@ export default function App() {
     const cambiarEstado = async (id, status) => {
         try {
             const token = await auth.currentUser.getIdToken();
-            await api.patchBook(token, id, {status});
+            await api.patchBook(token, id, { status });
             // actualiza el libro seleccionado si coincide
-            setSelectedBook((prev) => (prev && prev.id === id ? {...prev, status} : prev));
+            setSelectedBook((prev) => (prev && prev.id === id ? { ...prev, status } : prev));
             listarLibros();
         } catch (e) {
             alert(e.message || "Error al cambiar estado");
@@ -316,7 +316,7 @@ export default function App() {
             const token = await auth.currentUser.getIdToken();
             await api.deleteNote(token, noteId);
 
-            if (selectedBook) cargarNotas(selectedBook.id);
+            if (selectedBook && !selectedBook._discoverPreview) cargarNotas(selectedBook.id);
         } catch (e) {
             alert(e.message || "Error al borrar la nota");
         }
@@ -351,7 +351,7 @@ export default function App() {
                 mood: editMood || "",
             });
             // refrescar y salir del modo edición
-            if (selectedBook) await cargarNotas(selectedBook.id);
+            if (selectedBook && !selectedBook._discoverPreview) await cargarNotas(selectedBook.id);
             cancelarEditarNota();
         } catch (e) {
             alert(e.message || "Error al editar la nota");
@@ -431,7 +431,7 @@ export default function App() {
     const compartirReviewAnonima = async (bookId) => {
         setReviewLoading(true);
         try {
-            await guardarReview(bookId, {isPublic: true, isAnonymous: true});
+            await guardarReview(bookId, { isPublic: true, isAnonymous: true });
         } finally {
             setReviewLoading(false);
         }
@@ -476,9 +476,9 @@ export default function App() {
     const cambiarShelf = async (id, shelf) => {
         try {
             const token = await auth.currentUser.getIdToken();
-            await api.patchBook(token, id, {shelf});
+            await api.patchBook(token, id, { shelf });
             // si elijo shelf, quito status --> por ello, lo dejo en to_read para no romper nada
-            setSelectedBook((prev) => (prev && prev.id === id ? {...prev, shelf} : prev));
+            setSelectedBook((prev) => (prev && prev.id === id ? { ...prev, shelf } : prev));
             listarLibros();
         } catch (e) {
             alert(e.message || "Error al cambiar shelf");
@@ -489,10 +489,10 @@ export default function App() {
     const toggleBookShelf = async (bookId, shelfName) => {
         try {
             const token = await auth.currentUser.getIdToken();
-            const data = await api.toggleBookShelf(token, bookId, {shelf: shelfName});
+            const data = await api.toggleBookShelf(token, bookId, { shelf: shelfName });
 
             if (data && data.id) {
-                setSelectedBook((prev) => (prev && prev.id === bookId ? {...prev, ...data} : prev));
+                setSelectedBook((prev) => (prev && prev.id === bookId ? { ...prev, ...data } : prev));
             }
 
             listarLibros();
@@ -600,6 +600,81 @@ export default function App() {
         }
     };
 
+    // añadir libro desde preview de discover/reviews
+    const addFromPreview = async (book, { status, shelves } = {}) => {
+        try {
+            const token = await auth.currentUser.getIdToken();
+
+            const existingByText = books.find((b) => {
+                const bt = (b.title || "").trim().toLowerCase();
+                const ba = (b.author || "").trim().toLowerCase();
+                return (
+                    bt === (book.title || "").trim().toLowerCase() &&
+                    ba === (book.author || "").trim().toLowerCase()
+                );
+            });
+
+            if (existingByText) {
+                if (typeof status === "string" && existingByText.status !== status) {
+                    await cambiarEstado(existingByText.id, status);
+                }
+
+                if (Array.isArray(shelves) && shelves.length > 0) {
+                    for (const s of shelves) {
+                        const hasShelf =
+                            Array.isArray(existingByText.shelves) &&
+                            existingByText.shelves.includes(s);
+
+                        if (!hasShelf) {
+                            await toggleBookShelf(existingByText.id, s);
+                        }
+                    }
+                }
+
+                await listarLibros();
+                setSelectedBook((prev) => (prev && prev._discoverPreview ? { ...existingByText } : prev));
+                return;
+            }
+
+            await api.createBook(token, {
+                title: book.title || "Sin título",
+                author: book.author || "",
+                status: typeof status === "string" ? status : "",
+                shelves: Array.isArray(shelves) ? shelves : [],
+                tags: ["biblioteca"],
+                genres: [],
+                cover: {
+                    source: "openlibrary",
+                    url: book.cover?.url || "",
+                    openLibraryCoverId: book.cover?.openLibraryCoverId || null,
+                },
+                openLibrary: {
+                    workKey: book.openLibrary?.workKey || "",
+                    authorKey: book.openLibrary?.authorKey || "",
+                },
+            });
+
+            await listarLibros();
+
+            const refreshed = await api.listBooks(token);
+            const nextBooks = Array.isArray(refreshed) ? refreshed : [];
+            const added = nextBooks.find((b) => {
+                const bt = (b.title || "").trim().toLowerCase();
+                const ba = (b.author || "").trim().toLowerCase();
+                return (
+                    bt === (book.title || "").trim().toLowerCase() &&
+                    ba === (book.author || "").trim().toLowerCase()
+                );
+            });
+
+            if (added) {
+                setSelectedBook(added);
+            }
+        } catch (e) {
+            alert(e.message || "Error al añadir el libro");
+        }
+    };
+
     useEffect(() => {
         // escuchamos los cambios de sesión (se ejecuta cada vez que se inicia o cierra sesión)
         const unsub = onAuthStateChanged(auth, (u) => {
@@ -626,8 +701,21 @@ export default function App() {
     useEffect(() => {
         if (selectedBook) {
             // cuando se abre el detalle de un libro → cargar sus notas
-            cargarNotas(selectedBook.id);
-            cargarReview(selectedBook.id);
+            if (!selectedBook._discoverPreview) {
+                cargarNotas(selectedBook.id);
+                cargarReview(selectedBook.id);
+            } else {
+                setNotes([]);
+                setNoteText("");
+                setNoteChapter("");
+                setNoteQuote("");
+                setMyReview(null);
+                setReviewText("");
+                setReviewRating(5);
+                setReviewIsPublic(false);
+                setReviewIsAnonymous(true);
+                setPublicReviews([]);
+            }
         } else {
             // cuando se vuelve atrás → limpiar estado de notas
             setNotes([]);
@@ -651,8 +739,10 @@ export default function App() {
         if (activeTab === "discover") return "Discover";
         return "Room";
     }, [activeTab]);
+
     if (loading) return <p>Cargando...</p>; // si aun comprobando sesión
     if (!user) return <AuthPage />; // no usuario logueado
+
     // si hay usuario logueado --> página
     if (selectedBook) {
         return (
@@ -707,6 +797,7 @@ export default function App() {
                 setNoteMood={setNoteMood}
                 editMood={editMood}
                 setEditMood={setEditMood}
+                addFromPreview={addFromPreview}
             />
         );
     }
@@ -768,7 +859,7 @@ export default function App() {
                 )}
 
                 {activeTab === "diary" && (
-                    <Diary books={books} setSelectedBook={setSelectedBook} styles={styles}/>
+                    <Diary books={books} setSelectedBook={setSelectedBook} styles={styles} />
 
                 )}
 
@@ -787,6 +878,7 @@ export default function App() {
                         toggleBookShelf={toggleBookShelf}
                         addStatusByKey={addStatusByKey}
                         setAddStatusByKey={setAddStatusByKey}
+                        setSelectedBook={setSelectedBook}
                     />
                 )}
 

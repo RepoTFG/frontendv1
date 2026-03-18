@@ -17,6 +17,7 @@ export default function Discover({
                                      toggleBookShelf,
                                      addStatusByKey,
                                      setAddStatusByKey,
+                                     setSelectedBook,
                                  }) {
     // estilos
     const sectionWrap = {
@@ -60,11 +61,12 @@ export default function Discover({
     };
 
     // top tabs
-    const [tab, setTab] = useState("for_you"); // for_you, mood, connect
+    const [tab, setTab] = useState("for_you"); // for_you, mood, connect, reviews
 
     const tabs = useMemo(
         () => [
             { key: "for_you", label: "For you" },
+            { key: "reviews", label: "Reviews" },
             { key: "mood", label: "Mood" },
             { key: "connect", label: "Connect" },
         ],
@@ -220,6 +222,12 @@ export default function Discover({
         return `discover_ai_revealed_${day}`;
     }, [bookOfDay?.day, bookOfDayAI?.day]);
 
+    // reviews feed
+    const [reviewsFeed, setReviewsFeed] = useState([]);
+    const [reviewsFeedLoading, setReviewsFeedLoading] = useState(false);
+    const [reviewsFeedError, setReviewsFeedError] = useState("");
+    const [reviewsQuery, setReviewsQuery] = useState("");
+
     // cargamos feedback: pidiendo token y llamamos a endpoint GET actualizando el estado
     const loadFeedback = async () => {
         try {
@@ -256,6 +264,24 @@ export default function Discover({
             return null;
         } finally {
             setBookOfDayAILoading(false);
+        }
+    };
+
+    // cargamos feed de reseñas públicas
+    const loadReviewsFeed = async (q = "") => {
+        try {
+            setReviewsFeedLoading(true);
+            setReviewsFeedError("");
+
+            const token = await auth.currentUser.getIdToken();
+            const data = await api.getReviewsFeed(token, { q, limit: 20 });
+
+            setReviewsFeed(Array.isArray(data) ? data : []);
+        } catch (e) {
+            setReviewsFeed([]);
+            setReviewsFeedError(e.message || "Error loading reviews");
+        } finally {
+            setReviewsFeedLoading(false);
         }
     };
 
@@ -311,6 +337,11 @@ export default function Discover({
     useEffect(() => {
         if (tab !== "for_you") return;
         loadBookOfDayAI();
+    }, [tab]);
+
+    useEffect(() => {
+        if (tab !== "reviews") return;
+        loadReviewsFeed(reviewsQuery);
     }, [tab]);
 
     // guardamos si el usuario ya reveló el libro de hoy
@@ -725,7 +756,17 @@ export default function Discover({
                             >
                                 Tap to reveal
                             </div>
-
+                            <div
+                                style={{
+                                    marginTop: 8,
+                                    color: MUTED,
+                                    fontSize: 14,
+                                    lineHeight: 1.55,
+                                    maxWidth: 340,
+                                }}
+                            >
+                                A story to keep you company today.
+                            </div>
                         </>
                     ) : (
                         <>
@@ -975,6 +1016,145 @@ export default function Discover({
         );
     };
 
+    const ReviewFeedCard = ({ review }) => (
+        <button
+            type="button"
+            onClick={() => {
+                const existing = books.find((b) => {
+                    const sameTitle = (b.title || "").trim().toLowerCase() === (review.title || "").trim().toLowerCase();
+                    const sameAuthor = (b.author || "").trim().toLowerCase() === (review.author || "").trim().toLowerCase();
+                    return sameTitle && sameAuthor;
+                });
+
+                if (existing) {
+                    setSelectedBook(existing);
+                    return;
+                }
+
+                setSelectedBook({
+                    id: `discover-review-${review.id}`,
+                    title: review.title || "Book",
+                    author: review.author || "",
+                    cover: {
+                        url: review.coverUrl || "",
+                        source: "openlibrary",
+                        openLibraryCoverId: null,
+                    },
+                    status: "",
+                    shelves: [],
+                    openLibrary: {
+                        workKey: review.openLibrary?.workKey || "",
+                        authorKey: review.openLibrary?.authorKey || "",
+                    },
+                    readCount: 0,
+                    _discoverPreview: true,
+                });
+            }}
+            style={{
+                textAlign: "left",
+                border: `1px solid ${BORDER}`,
+                borderRadius: 22,
+                background: "white",
+                padding: 14,
+                cursor: "pointer",
+                display: "grid",
+                gap: 12,
+            }}
+        >
+            <div style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
+                <div
+                    style={{
+                        width: 54,
+                        height: 78,
+                        borderRadius: 10,
+                        border: `1px solid ${BORDER}`,
+                        background: "#F6F3EF",
+                        overflow: "hidden",
+                        flex: "0 0 auto",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        color: MUTED,
+                        fontSize: 12,
+                        fontWeight: 900,
+                    }}
+                >
+                    {review.coverUrl ? (
+                        <img
+                            src={review.coverUrl}
+                            alt={review.title}
+                            style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                        />
+                    ) : (
+                        "Cover"
+                    )}
+                </div>
+
+                <div style={{ flex: 1, minWidth: 0 }}>
+                    <div
+                        style={{
+                            fontWeight: 900,
+                            color: ACCENT,
+                            fontSize: 16,
+                            lineHeight: 1.2,
+                        }}
+                    >
+                        {review.title}
+                    </div>
+
+                    {review.author ? (
+                        <div style={{ marginTop: 4, color: MUTED, fontSize: 13 }}>
+                            {review.author}
+                        </div>
+                    ) : null}
+
+                    <div
+                        style={{
+                            marginTop: 8,
+                            display: "flex",
+                            gap: 8,
+                            flexWrap: "wrap",
+                            alignItems: "center",
+                        }}
+                    >
+                        <div
+                            style={{
+                                border: `1px solid ${BORDER}`,
+                                borderRadius: 999,
+                                padding: "6px 8px",
+                                background: "#F6F3EF",
+                                color: ACCENT,
+                                fontSize: 12,
+                                fontWeight: 900,
+                            }}
+                        >
+                            {review.rating ? `⭐ ${review.rating}/5` : "No rating"}
+                        </div>
+
+                        <div style={{ color: MUTED, fontSize: 12, fontWeight: 800 }}>
+                            {review.authorLabel || "Anonymous reader"}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div
+                style={{
+                    color: ACCENT,
+                    fontSize: 14,
+                    lineHeight: 1.6,
+                    whiteSpace: "pre-wrap",
+                }}
+            >
+                {review.text}
+            </div>
+
+            <div style={{ color: MUTED, fontSize: 12 }}>
+                {review.createdAt ? new Date(review.createdAt).toLocaleDateString() : ""}
+            </div>
+        </button>
+    );
+
     // normalizamos para que funcione tanto si viene {match:{...}} como si viene directo
     const normalizedMatch = useMemo(() => {
         if (!matchData) return null;
@@ -1127,6 +1307,103 @@ export default function Discover({
                             />
                         </>
                     ) : null}
+                </div>
+            )}
+
+            {/* reviews feed */}
+            {tab === "reviews" && (
+                <div style={{ display: "grid", gap: 14 }}>
+                    <div style={{ display: "grid", gap: 6 }}>
+                        <div
+                            style={{
+                                color: MUTED,
+                                fontSize: 12,
+                                fontWeight: 800,
+                                letterSpacing: "0.04em",
+                                textTransform: "uppercase",
+                            }}
+                        >
+                            Public reviews
+                        </div>
+
+                        <div
+                            style={{
+                                color: ACCENT,
+                                fontWeight: 900,
+                                fontSize: 26,
+                                lineHeight: 1.04,
+                                letterSpacing: "-0.03em",
+                            }}
+                        >
+                            Read what others thought
+                        </div>
+
+                        <div
+                            style={{
+                                color: MUTED,
+                                fontSize: 14,
+                                lineHeight: 1.5,
+                                maxWidth: 460,
+                            }}
+                        >
+                            Anonymous reviews to help you decide if a book feels right for you.
+                        </div>
+                    </div>
+
+                    <div style={softCard}>
+                        <div style={{ display: "grid", gap: 10 }}>
+                            <input
+                                value={reviewsQuery}
+                                onChange={(e) => setReviewsQuery(e.target.value)}
+                                placeholder="Search a word in reviews"
+                                style={inputStyle}
+                            />
+
+                            <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                                <button
+                                    type="button"
+                                    style={ghostBtn}
+                                    onClick={() => loadReviewsFeed(reviewsQuery)}
+                                    disabled={reviewsFeedLoading}
+                                >
+                                    {reviewsFeedLoading ? "Loading..." : "Search reviews"}
+                                </button>
+
+                                <button
+                                    type="button"
+                                    style={ghostBtn}
+                                    onClick={() => {
+                                        setReviewsQuery("");
+                                        loadReviewsFeed("");
+                                    }}
+                                >
+                                    Clear
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    {reviewsFeedError ? (
+                        <div style={{ color: MUTED, fontSize: 13 }}>
+                            {`⚠️ ${reviewsFeedError}`}
+                        </div>
+                    ) : null}
+
+                    <div style={{ display: "grid", gap: 12 }}>
+                        {reviewsFeedLoading ? (
+                            <div style={{ color: MUTED, fontSize: 13 }}>
+                                Loading reviews...
+                            </div>
+                        ) : reviewsFeed.length === 0 ? (
+                            <div style={{ color: MUTED, fontSize: 13 }}>
+                                There are no public reviews to show yet.
+                            </div>
+                        ) : (
+                            reviewsFeed.map((review) => (
+                                <ReviewFeedCard key={review.id} review={review} />
+                            ))
+                        )}
+                    </div>
                 </div>
             )}
 
