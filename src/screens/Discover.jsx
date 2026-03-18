@@ -52,6 +52,13 @@ export default function Discover({
         fontSize: 14,
     };
 
+    const softCard = {
+        border: `1px solid ${BORDER}`,
+        borderRadius: 24,
+        background: "#FCFBF8",
+        padding: 16,
+    };
+
     // top tabs
     const [tab, setTab] = useState("for_you"); // for_you, mood, connect
 
@@ -203,6 +210,16 @@ export default function Discover({
         return byCover || byText || null;
     }, [bookOfDayAIDoc, books]);
 
+    // clave por día para recordar si el libro ya fue revelado
+    const revealStorageKey = useMemo(() => {
+        const day =
+            bookOfDay?.day ||
+            bookOfDayAI?.day ||
+            new Date().toISOString().slice(0, 10);
+
+        return `discover_ai_revealed_${day}`;
+    }, [bookOfDay?.day, bookOfDayAI?.day]);
+
     // cargamos feedback: pidiendo token y llamamos a endpoint GET actualizando el estado
     const loadFeedback = async () => {
         try {
@@ -284,11 +301,24 @@ export default function Discover({
     }, [bookOfDayAI]);
 
     useEffect(() => {
-        setAiRevealed(false);
         setAiAnimating(false);
-        setBookOfDayAI(null);
         setBookOfDayAIFeedback(0);
-    }, [bookOfDay?.day, bookOfDay?.title]);
+
+        const alreadyRevealed = localStorage.getItem(revealStorageKey) === "true";
+        setAiRevealed(alreadyRevealed);
+    }, [bookOfDay?.day, bookOfDay?.title, revealStorageKey]);
+
+    useEffect(() => {
+        if (tab !== "for_you") return;
+        loadBookOfDayAI();
+    }, [tab]);
+
+    // guardamos si el usuario ya reveló el libro de hoy
+    useEffect(() => {
+        if (aiRevealed) {
+            localStorage.setItem(revealStorageKey, "true");
+        }
+    }, [aiRevealed, revealStorageKey]);
 
     const revealAIBook = async () => {
         if (aiRevealed || aiAnimating || bookOfDayAILoading) return;
@@ -513,115 +543,307 @@ export default function Discover({
         </div>
     );
 
-    const MysteryBookCard = ({
-                                 onReveal,
-                                 loading,
-                                 revealed,
-                                 animating,
-                                 revealedCoverUrl,
-                                 titleText,
-                                 authorText,
-                                 subtitleText,
-                             }) => (
+    const HeroRevealCard = ({
+                                onReveal,
+                                loading,
+                                revealed,
+                                animating,
+                                revealedCoverUrl,
+                                titleText,
+                                authorText,
+                                subtitleText,
+                            }) => (
         <div
             style={{
                 border: `1px solid ${BORDER}`,
-                borderRadius: 16,
-                padding: 12,
-                background: "white",
-                display: "flex",
-                gap: 12,
-                alignItems: "center",
+                borderRadius: 28,
+                padding: 18,
+                background: "linear-gradient(180deg, #FFFEFC 0%, #F8F4EE 100%)",
+                boxShadow: "0 12px 30px rgba(47,42,36,0.05)",
             }}
         >
-            <motion.button
-                type="button"
-                onClick={onReveal}
-                disabled={loading || revealed || animating}
-                whileHover={!loading && !revealed && !animating ? { y: -2 } : {}}
-                whileTap={!loading && !revealed && !animating ? { scale: 0.98 } : {}}
-                animate={animating ? { rotateY: -20, scale: 1.02 } : { rotateY: 0, scale: 1 }}
-                transition={{ duration: 0.35 }}
+            <div
                 style={{
-                    width: 72,
-                    height: 104,
-                    borderRadius: 10,
-                    overflow: "hidden",
-                    border: `1px solid ${BORDER}`,
-                    background: "#F6F3EF",
-                    padding: 0,
-                    cursor: loading || revealed || animating ? "default" : "pointer",
-                    flex: "0 0 auto",
-                    position: "relative",
+                    display: "flex",
+                    alignItems: "flex-start",
+                    justifyContent: "space-between",
+                    gap: 10,
+                    marginBottom: 14,
                 }}
-                title="Reveal book"
             >
-                <AnimatePresence mode="wait">
-                    {!revealed && !animating ? (
-                        <motion.img
-                            key="mystery"
-                            src="/mystery-book.png"
-                            alt="Mystery book"
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                            exit={{ opacity: 0 }}
-                            transition={{ duration: 0.2 }}
-                            style={{
-                                position: "absolute",
-                                inset: 0,
-                                width: "100%",
-                                height: "100%",
-                                objectFit: "cover",
-                                display: "block",
-                            }}
-                        />
-                    ) : revealedCoverUrl ? (
-                        <motion.img
-                            key="revealed"
-                            src={revealedCoverUrl}
-                            alt="Revealed book"
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                            exit={{ opacity: 0 }}
-                            transition={{ duration: 0.25 }}
-                            style={{
-                                position: "absolute",
-                                inset: 0,
-                                width: "100%",
-                                height: "100%",
-                                objectFit: "cover",
-                                display: "block",
-                            }}
-                        />
-                    ) : null}
-                </AnimatePresence>
-            </motion.button>
+                <div>
+                    <div
+                        style={{
+                            color: MUTED,
+                            fontSize: 12,
+                            fontWeight: 800,
+                            letterSpacing: "0.04em",
+                            textTransform: "uppercase",
+                        }}
+                    >
+                        Today&apos;s pick
+                    </div>
+                    <div
+                        style={{
+                            marginTop: 6,
+                            color: ACCENT,
+                            fontWeight: 900,
+                            fontSize: 24,
+                            lineHeight: 1.05,
+                            letterSpacing: "-0.03em",
+                        }}
+                    >
+                        A book for today
+                    </div>
+                </div>
 
-            <div style={{ flex: 1, minWidth: 0 }}>
-                {!revealed ? (
-                    <>
-                        <div style={{ fontWeight: 900, color: ACCENT, fontSize: 14 }}>
-                            For you
-                        </div>
-                        <div style={{ marginTop: 4, color: MUTED, fontSize: 13 }}>
-                            {loading || animating ? "Opening..." : "Tap the book to reveal your recommendation"}
-                        </div>
-                    </>
-                ) : (
-                    <>
-                        <div style={{ fontWeight: 900, color: ACCENT, fontSize: 14 }}>
-                            {titleText}
-                        </div>
-                        <div style={{ marginTop: 4, color: MUTED, fontSize: 13 }}>
-                            {authorText}
-                        </div>
-                        {!!subtitleText && (
-                            <div style={{ marginTop: 6, color: MUTED, fontSize: 12 }}>
-                                {subtitleText}
+                <div
+                    style={{
+                        border: `1px solid ${BORDER}`,
+                        borderRadius: 999,
+                        padding: "7px 10px",
+                        background: "rgba(255,255,255,0.85)",
+                        color: ACCENT,
+                        fontSize: 12,
+                        fontWeight: 900,
+                        whiteSpace: "nowrap",
+                    }}
+                >
+                    AI pick
+                </div>
+            </div>
+
+            <div
+                style={{
+                    display: "grid",
+                    gridTemplateColumns: revealed ? "120px 1fr" : "1fr",
+                    gap: 18,
+                    alignItems: "center",
+                }}
+            >
+                <div
+                    style={{
+                        display: "flex",
+                        justifyContent: "center",
+                    }}
+                >
+                    <motion.button
+                        type="button"
+                        onClick={onReveal}
+                        disabled={loading || revealed || animating}
+                        whileHover={!loading && !revealed && !animating ? { y: -3, rotate: -1 } : {}}
+                        whileTap={!loading && !revealed && !animating ? { scale: 0.985 } : {}}
+                        animate={animating ? { rotateY: -20, scale: 1.03 } : { rotateY: 0, scale: 1 }}
+                        transition={{ duration: 0.35 }}
+                        style={{
+                            width: revealed ? 120 : 156,
+                            height: revealed ? 180 : 228,
+                            borderRadius: 16,
+                            overflow: "hidden",
+                            border: `1px solid ${BORDER}`,
+                            background: "#F6F3EF",
+                            padding: 0,
+                            cursor: loading || revealed || animating ? "default" : "pointer",
+                            position: "relative",
+                            boxShadow: "0 14px 28px rgba(47,42,36,0.10)",
+                        }}
+                        title="Reveal book"
+                    >
+                        <AnimatePresence mode="wait">
+                            {!revealed && !animating ? (
+                                <motion.img
+                                    key="mystery"
+                                    src="/mystery-book.png"
+                                    alt="Mystery book"
+                                    initial={{ opacity: 0 }}
+                                    animate={{ opacity: 1 }}
+                                    exit={{ opacity: 0 }}
+                                    transition={{ duration: 0.2 }}
+                                    style={{
+                                        position: "absolute",
+                                        inset: 0,
+                                        width: "100%",
+                                        height: "100%",
+                                        objectFit: "cover",
+                                        display: "block",
+                                    }}
+                                />
+                            ) : revealedCoverUrl ? (
+                                <motion.img
+                                    key="revealed"
+                                    src={revealedCoverUrl}
+                                    alt="Revealed book"
+                                    initial={{ opacity: 0 }}
+                                    animate={{ opacity: 1 }}
+                                    exit={{ opacity: 0 }}
+                                    transition={{ duration: 0.25 }}
+                                    style={{
+                                        position: "absolute",
+                                        inset: 0,
+                                        width: "100%",
+                                        height: "100%",
+                                        objectFit: "cover",
+                                        display: "block",
+                                    }}
+                                />
+                            ) : (
+                                <motion.div
+                                    key="revealed-placeholder"
+                                    initial={{ opacity: 0 }}
+                                    animate={{ opacity: 1 }}
+                                    exit={{ opacity: 0 }}
+                                    transition={{ duration: 0.25 }}
+                                    style={{
+                                        position: "absolute",
+                                        inset: 0,
+                                        display: "flex",
+                                        alignItems: "center",
+                                        justifyContent: "center",
+                                        color: MUTED,
+                                        fontWeight: 900,
+                                        fontSize: 12,
+                                        background: "#F6F3EF",
+                                    }}
+                                >
+                                    Cover
+                                </motion.div>
+                            )}
+                        </AnimatePresence>
+                    </motion.button>
+                </div>
+
+                <div style={{ minWidth: 0 }}>
+                    {!revealed ? (
+                        <>
+                            <div
+                                style={{
+                                    color: ACCENT,
+                                    fontWeight: 900,
+                                    fontSize: 18,
+                                    lineHeight: 1.2,
+                                }}
+                            >
+                                Tap to reveal
                             </div>
-                        )}
-                    </>
-                )}
+
+                        </>
+                    ) : (
+                        <>
+                            <div
+                                style={{
+                                    color: ACCENT,
+                                    fontWeight: 900,
+                                    fontSize: 24,
+                                    lineHeight: 1.08,
+                                    letterSpacing: "-0.03em",
+                                }}
+                            >
+                                {titleText}
+                            </div>
+
+                            <div
+                                style={{
+                                    marginTop: 8,
+                                    color: MUTED,
+                                    fontSize: 15,
+                                    lineHeight: 1.4,
+                                }}
+                            >
+                                {authorText}
+                            </div>
+
+                            {!!subtitleText && (
+                                <div
+                                    style={{
+                                        marginTop: 14,
+                                        border: `1px solid ${BORDER}`,
+                                        borderRadius: 18,
+                                        background: "rgba(255,255,255,0.7)",
+                                        padding: 12,
+                                        color: ACCENT,
+                                        fontSize: 13,
+                                        lineHeight: 1.5,
+                                    }}
+                                >
+                                    {subtitleText}
+                                </div>
+                            )}
+                        </>
+                    )}
+                </div>
+            </div>
+        </div>
+    );
+
+    const FeedbackBar = ({ value, loading, onLike, onDislike }) => (
+        <div
+            style={{
+                ...softCard,
+                padding: 14,
+            }}
+        >
+            <div
+                style={{
+                    fontSize: 12,
+                    color: MUTED,
+                    fontWeight: 800,
+                    marginBottom: 10,
+                    letterSpacing: "0.01em",
+                }}
+            >
+                How does this recommendation feel?
+            </div>
+
+            <div style={{ display: "flex", gap: 10 }}>
+                <button
+                    type="button"
+                    onClick={onLike}
+                    disabled={loading}
+                    style={{
+                        flex: 1,
+                        borderRadius: 18,
+                        border: `1px solid ${value === 1 ? ACCENT : BORDER}`,
+                        background: value === 1 ? ACCENT : "white",
+                        color: value === 1 ? "white" : ACCENT,
+                        padding: "14px 12px",
+                        fontWeight: 900,
+                        cursor: loading ? "default" : "pointer",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        gap: 8,
+                        fontSize: 14,
+                    }}
+                    title="Good AI recommendation"
+                >
+                    <span style={{ fontSize: 18 }}>👍</span>
+                    This fits me
+                </button>
+
+                <button
+                    type="button"
+                    onClick={onDislike}
+                    disabled={loading}
+                    style={{
+                        flex: 1,
+                        borderRadius: 18,
+                        border: `1px solid ${value === -1 ? ACCENT : BORDER}`,
+                        background: value === -1 ? ACCENT : "white",
+                        color: value === -1 ? "white" : ACCENT,
+                        padding: "14px 12px",
+                        fontWeight: 900,
+                        cursor: loading ? "default" : "pointer",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        gap: 8,
+                        fontSize: 14,
+                    }}
+                    title="Bad AI recommendation"
+                >
+                    <span style={{ fontSize: 18 }}>👎</span>
+                    Not for now
+                </button>
             </div>
         </div>
     );
@@ -637,16 +859,17 @@ export default function Discover({
         ];
 
         return (
-            <div style={{ marginTop: 10 }}>
+            <div style={softCard}>
                 <div
                     style={{
                         fontSize: 12,
                         color: MUTED,
                         fontWeight: 800,
-                        marginBottom: 8,
+                        marginBottom: 10,
+                        letterSpacing: "0.01em",
                     }}
                 >
-                    Save to...
+                    {existingBook ? "Update status" : "Save to status"}
                 </div>
 
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
@@ -669,7 +892,7 @@ export default function Discover({
                                     });
                                 }}
                                 style={{
-                                    padding: "8px 10px",
+                                    padding: "10px 12px",
                                     borderRadius: 999,
                                     border: `1px solid ${active ? ACCENT : BORDER}`,
                                     background: active ? ACCENT : CARD,
@@ -692,16 +915,17 @@ export default function Discover({
         if (!doc || !customShelves?.length) return null;
 
         return (
-            <div style={{ marginTop: 10 }}>
+            <div style={softCard}>
                 <div
                     style={{
                         fontSize: 12,
                         color: MUTED,
                         fontWeight: 800,
-                        marginBottom: 8,
+                        marginBottom: 10,
+                        letterSpacing: "0.01em",
                     }}
                 >
-                    Add to...
+                    Add to shelves
                 </div>
 
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
@@ -731,7 +955,7 @@ export default function Discover({
                                     });
                                 }}
                                 style={{
-                                    padding: "8px 10px",
+                                    padding: "10px 12px",
                                     borderRadius: 999,
                                     border: `1px solid ${active ? ACCENT : BORDER}`,
                                     background: active ? "#F6F3EF" : CARD,
@@ -776,8 +1000,48 @@ export default function Discover({
 
             {/* for you */}
             {tab === "for_you" && (
-                <div style={{ display: "grid", gap: 12 }}>
-                    <div style={{ fontWeight: 900, color: ACCENT }}>For you</div>
+                <div style={{ display: "grid", gap: 14 }}>
+                    <div
+                        style={{
+                            display: "grid",
+                            gap: 6,
+                        }}
+                    >
+                        <div
+                            style={{
+                                color: MUTED,
+                                fontSize: 12,
+                                fontWeight: 800,
+                                letterSpacing: "0.04em",
+                                textTransform: "uppercase",
+                            }}
+                        >
+                            Discover
+                        </div>
+
+                        <div
+                            style={{
+                                color: ACCENT,
+                                fontWeight: 900,
+                                fontSize: 28,
+                                lineHeight: 1.02,
+                                letterSpacing: "-0.04em",
+                            }}
+                        >
+                            A book for today
+                        </div>
+
+                        <div
+                            style={{
+                                color: MUTED,
+                                fontSize: 14,
+                                lineHeight: 1.5,
+                                maxWidth: 420,
+                            }}
+                        >
+                            One recommendation, chosen for today.
+                        </div>
+                    </div>
 
                     {/* book of the day */}
                     {/*
@@ -832,52 +1096,37 @@ export default function Discover({
                     */}
 
                     {/* book of the day AI */}
-                    <div style={{ display: "grid", gap: 10 }}>
-                        <MysteryBookCard
-                            onReveal={revealAIBook}
-                            loading={bookOfDayAILoading}
-                            revealed={aiRevealed}
-                            animating={aiAnimating}
-                            revealedCoverUrl={bookOfDayAIData.book.coverUrl}
-                            titleText={bookOfDayAIData.book.title}
-                            authorText={bookOfDayAIData.book.author}
-                            subtitleText={aiRevealed ? bookOfDayAIData.subtitle : ""}
-                        />
+                    <HeroRevealCard
+                        onReveal={revealAIBook}
+                        loading={bookOfDayAILoading}
+                        revealed={aiRevealed}
+                        animating={aiAnimating}
+                        revealedCoverUrl={bookOfDayAIData.book.coverUrl}
+                        titleText={bookOfDayAIData.book.title}
+                        authorText={bookOfDayAIData.book.author}
+                        subtitleText={aiRevealed ? bookOfDayAIData.subtitle : ""}
+                    />
 
-                        {aiRevealed && !bookOfDayAILoading && bookOfDayAI ? (
-                            <>
-                                <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                                    <button
-                                        type="button"
-                                        style={pill(bookOfDayAIFeedback === 1)}
-                                        title="Good AI recommendation"
-                                        disabled={bookOfDayAIFeedbackLoading || bookOfDayAILoading}
-                                        onClick={() => sendAIFeedback(1)}
-                                    >
-                                        👍
-                                    </button>
-                                    <button
-                                        type="button"
-                                        style={pill(bookOfDayAIFeedback === -1)}
-                                        title="Bad AI recommendation"
-                                        disabled={bookOfDayAIFeedbackLoading || bookOfDayAILoading}
-                                        onClick={() => sendAIFeedback(-1)}
-                                    >
-                                        👎
-                                    </button>
-                                </div>
+                    {aiRevealed && !bookOfDayAILoading && bookOfDayAI ? (
+                        <>
+                            <FeedbackBar
+                                value={bookOfDayAIFeedback}
+                                loading={bookOfDayAIFeedbackLoading || bookOfDayAILoading}
+                                onLike={() => sendAIFeedback(1)}
+                                onDislike={() => sendAIFeedback(-1)}
+                            />
 
-                                <StatusPicker
-                                    doc={bookOfDayAIDoc}
-                                    existingBook={existingBookOfDayAI}
-                                />
-                                <ShelfPicker
-                                    doc={bookOfDayAIDoc}
-                                    existingBook={existingBookOfDayAI}
-                                />
-                            </>
-                        ) : null}
-                    </div>
+                            <StatusPicker
+                                doc={bookOfDayAIDoc}
+                                existingBook={existingBookOfDayAI}
+                            />
+
+                            <ShelfPicker
+                                doc={bookOfDayAIDoc}
+                                existingBook={existingBookOfDayAI}
+                            />
+                        </>
+                    ) : null}
                 </div>
             )}
 
