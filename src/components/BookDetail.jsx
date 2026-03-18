@@ -97,8 +97,6 @@ export default function BookDetail({
         setRereadDraft(rc);
     }, [book?.id, book?.readCount]);
 
-
-
     const inputStyle = {
         padding: 12,
         borderRadius: 14,
@@ -120,7 +118,7 @@ export default function BookDetail({
         width: "100%",
         fontWeight: 700,
     };
-    // acciones secundarias (como ver reseñas, regargar, cancelar...)
+    // acciones secundarias (como ver reseñas, recargar, cancelar...)
     const ghostBtn = {
         padding: "12px 14px",
         borderRadius: 14,
@@ -166,28 +164,21 @@ export default function BookDetail({
             }}
             type="button"
             disabled={isDeleted && (key === "review" || key === "diary")}
-            title={isDeleted && (key === "review" || key === "diary") ? "Este libro ya no está en tu biblioteca" : undefined}
+            title={isDeleted && (key === "review" || key === "diary") ? "This book is no longer in your library" : undefined}
         >
             <span>{title}</span>
             <span style={{ opacity: 0.7 }}>{openPanel === key ? "—" : "+"}</span>
         </button>
     );
-    // evitar errores por diferencia en el formato JSON externo (para sinopsis --> campo description API)
+    // evitar errores por diferencia en el formato JSON externo (para synopsis --> campo description API)
     function pickText(field) {
         if (!field) return "";
         if (typeof field === "string") return field;
         if (typeof field === "object" && typeof field.value === "string") return field.value;
         return "";
     }
-    // comprobar que hay keys:
-    // console.log("BOOK DETAIL", {
-    //    title: book?.title,
-    //    author: book?.author,
-    //    workKey: book?.openLibrary?.workKey,
-    //    authorKey: book?.openLibrary?.authorKey,
-    //});
 
-    // cargar sinopsis desde Open Library (works)
+    // cargar synopsis desde Open Library (works)
     // guardamos las keys
     const workKey = book?.openLibrary?.workKey || "";
     const authorKey = book?.openLibrary?.authorKey || "";
@@ -254,7 +245,7 @@ export default function BookDetail({
         };
     }, [book?.id, workKey, authorKey, authorFromBook, titleFromBook, user, isDeleted]);
 
-// cargar sinopsis desde Open Library (works)
+    // cargar synopsis desde Open Library (works)
     useEffect(() => {
         let alive = true;
 
@@ -291,7 +282,7 @@ export default function BookDetail({
 
         const ak = resolvedAuthorKey || book?.openLibrary?.authorKey;
         if (!ak) {
-            setAuthorBio("No hay authorKey guardada para este libro (no viene de Open Library).");
+            setAuthorBio("There is no saved authorKey for this book (it does not come from Open Library).");
             return;
         }
 
@@ -299,12 +290,12 @@ export default function BookDetail({
         try {
             const a = await api.getOpenLibraryAuthor(ak);
             setAuthorName(a?.name || book?.author || "");
-            setAuthorBio(pickText(a?.bio) || "No hay biografía disponible.");
+            setAuthorBio(pickText(a?.bio) || "No biography available.");
             if (Array.isArray(a?.photos) && a.photos[0]) {
                 setAuthorPhoto(`https://covers.openlibrary.org/a/id/${a.photos[0]}-L.jpg`);
             }
         } catch (e) {
-            setAuthorBio("No se pudo cargar la biografía del autor.");
+            setAuthorBio("Could not load the author's biography.");
         } finally {
             setAuthorLoading(false);
         }
@@ -324,11 +315,15 @@ export default function BookDetail({
             setReadCount(safe);
             setRereadOpen(false);
         } catch (e) {
-            alert(e.message || "Error guardando relecturas");
+            alert(e.message || "Error saving rereads");
         }
     };
 
-
+    const handleToggleStatus = async (statusKey) => {
+        if (isDeleted) return;
+        const nextStatus = book.status === statusKey ? "" : statusKey;
+        await cambiarEstado(book.id, nextStatus);
+    };
 
     return (
         <div style={{ background: "#FBFAF8", minHeight: "100vh" }}>
@@ -359,8 +354,8 @@ export default function BookDetail({
                                 color: ACCENT,
                             }}
                             type="button"
-                            aria-label="Volver"
-                            title="Volver"
+                            aria-label="Back"
+                            title="Back"
                         >
                             ←
                         </button>
@@ -427,7 +422,7 @@ export default function BookDetail({
                                         alignItems: "center",
                                         gap: 6,
                                     }}
-                                    title="Ver info del autor"
+                                    title="View author info"
                                 >
                                     {book.author} <span style={{ fontSize: 12, opacity: 0.8 }}>↗</span>
                                 </button>
@@ -449,7 +444,7 @@ export default function BookDetail({
                                 fontWeight: 700,
                             }}
                         >
-                            Este libro ya no está en tu biblioteca. Se muestra solo como referencia desde tus notas.
+                            This book is no longer in your library. It is shown only as a reference from your notes.
                         </div>
                     )}
                 </div>
@@ -495,7 +490,7 @@ export default function BookDetail({
                             <button
                                 type="button"
                                 onClick={() => !isDeleted && setRereadOpen(true)}
-                                title={isDeleted ? "No disponible (libro eliminado)" : "Editar relecturas"}
+                                title={isDeleted ? "Unavailable (deleted book)" : "Edit rereads"}
                                 style={{
                                     position: "absolute",
                                     top: 8,
@@ -522,53 +517,52 @@ export default function BookDetail({
 
                         {/* info a la derecha */}
                         <div style={{ flex: 1, minWidth: 0 }}>
-                            <div style={{ fontSize: 12, color: MUTED, fontWeight: 800, marginBottom: 8 }}>Estado</div>
+                            <div style={{ fontSize: 12, color: MUTED, fontWeight: 800, marginBottom: 8 }}>Status</div>
 
                             {/* status en chips */}
                             <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
                                 <button
                                     type="button"
-                                    onClick={() => !isDeleted && cambiarEstado(book.id, "to_read")}
-                                    style={pill((book.status || "to_read") === "to_read", isDeleted)}
+                                    onClick={() => handleToggleStatus("to_read")}
+                                    style={pill(book.status === "to_read", isDeleted)}
                                     disabled={isDeleted}
-                                    title={isDeleted ? "No disponible (libro eliminado)" : undefined}
+                                    title={isDeleted ? "Unavailable (deleted book)" : undefined}
                                 >
                                     Want to read
                                 </button>
                                 <button
                                     type="button"
-                                    onClick={() => !isDeleted && cambiarEstado(book.id, "reading")}
+                                    onClick={() => handleToggleStatus("reading")}
                                     style={pill(book.status === "reading", isDeleted)}
                                     disabled={isDeleted}
-                                    title={isDeleted ? "No disponible (libro eliminado)" : undefined}
+                                    title={isDeleted ? "Unavailable (deleted book)" : undefined}
                                 >
                                     Currently reading
                                 </button>
                                 <button
                                     type="button"
-                                    onClick={() => !isDeleted && cambiarEstado(book.id, "paused")}
+                                    onClick={() => handleToggleStatus("paused")}
                                     style={pill(book.status === "paused", isDeleted)}
                                     disabled={isDeleted}
-                                    title={isDeleted ? "No disponible (libro eliminado)" : undefined}
+                                    title={isDeleted ? "Unavailable (deleted book)" : undefined}
                                 >
                                     Interrupted
                                 </button>
                                 <button
                                     type="button"
-                                    onClick={() => !isDeleted && cambiarEstado(book.id, "finished")}
+                                    onClick={() => handleToggleStatus("finished")}
                                     style={pill(book.status === "finished", isDeleted)}
                                     disabled={isDeleted}
-                                    title={isDeleted ? "No disponible (libro eliminado)" : undefined}
+                                    title={isDeleted ? "Unavailable (deleted book)" : undefined}
                                 >
                                     Finished
                                 </button>
                             </div>
 
-
                             {customShelves.length > 0 && (
                                 // estanterias personalizadas -> selección múltiple
                                 <div style={{ marginTop: 14, opacity: isDeleted ? 0.6 : 1 }}>
-                                    <div style={{ fontSize: 12, color: MUTED, fontWeight: 800, marginBottom: 8 }}>Añadir también a...</div>
+                                    <div style={{ fontSize: 12, color: MUTED, fontWeight: 800, marginBottom: 8 }}>Add to...</div>
 
                                     <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
                                         {customShelves.map((s) => {
@@ -591,7 +585,7 @@ export default function BookDetail({
                                                     }}
                                                     type="button"
                                                     disabled={isDeleted}
-                                                    title={isDeleted ? "No disponible (libro eliminado)" : (active ? "Quitar de esta shelf" : "Añadir a esta shelf")} // para hover/lector pantalla
+                                                    title={isDeleted ? "Unavailable (deleted book)" : (active ? "Remove from this shelf" : "Add to this shelf")} // para hover/lector pantalla
                                                 >
                                                     {s}
                                                 </button>
@@ -617,16 +611,16 @@ export default function BookDetail({
                                     }}
                                     type="button"
                                     disabled={isDeleted}
-                                    title={isDeleted ? "No disponible (libro eliminado)" : undefined}
+                                    title={isDeleted ? "Unavailable (deleted book)" : undefined}
                                 >
-                                    🗑️ Borrar libro
+                                    🗑️ Delete book
                                 </button>
                             </div>
                         </div>
                     </div>
                 </div>
 
-                {/* sinopsis */}
+                {/* synopsis */}
                 <div style={{ marginTop: 14 }}>
                     <div
                         style={{
@@ -636,15 +630,15 @@ export default function BookDetail({
                             padding: 14,
                         }}
                     >
-                        <div style={{ fontWeight: 900, color: ACCENT, marginBottom: 8 }}>Sinopsis</div>
+                        <div style={{ fontWeight: 900, color: ACCENT, marginBottom: 8 }}>Synopsis</div>
 
                         {synopsisLoading ? (
-                            <div style={{ fontSize: 13, color: MUTED }}>Cargando sinopsis...</div>
+                            <div style={{ fontSize: 13, color: MUTED }}>Loading synopsis...</div>
                         ) : synopsis ? (
                             <div style={{ fontSize: 13, color: ACCENT, whiteSpace: "pre-wrap", lineHeight: 1.5 }}>{synopsis}</div>
                         ) : (
                             <div style={{ fontSize: 13, color: MUTED }}>
-                                No se encontró sinopsis para este libro.
+                                No synopsis was found for this book.
                             </div>
                         )}
                     </div>
@@ -667,7 +661,7 @@ export default function BookDetail({
                             >
                                 <div style={{ display: "grid", gap: 10 }}>
                                     <select
-                                        value={reviewRating} // gusrdamos el score
+                                        value={reviewRating} // guardamos el score
                                         onChange={(e) => setReviewRating(Number(e.target.value))}
                                         style={{
                                             ...inputStyle,
@@ -684,7 +678,7 @@ export default function BookDetail({
                                     </select>
 
                                     <textarea
-                                        placeholder="Escribe tu reseña del libro..."
+                                        placeholder="Write your review of the book..."
                                         value={reviewText}
                                         onChange={(e) => setReviewText(e.target.value)}
                                         rows={4}
@@ -692,7 +686,7 @@ export default function BookDetail({
                                     />
 
                                     <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
-                                        <div style={{ fontSize: 12, color: MUTED, fontWeight: 800, minWidth: 120 }}>Modo:</div>
+                                        <div style={{ fontSize: 12, color: MUTED, fontWeight: 800, minWidth: 120 }}>Mode:</div>
 
                                         <button
                                             onClick={() => {
@@ -708,7 +702,7 @@ export default function BookDetail({
                                             }}
                                             type="button"
                                         >
-                                            Solo para mí
+                                            Just for me
                                         </button>
 
                                         <button
@@ -722,9 +716,9 @@ export default function BookDetail({
                                                 border: `1px solid ${reviewIsPublic ? ACCENT : BORDER}`,
                                             }}
                                             type="button"
-                                            title="Publica tu reseña sin mostrar tu identidad"
+                                            title="Publish your review without showing your identity"
                                         >
-                                            Publicar anónima
+                                            Publish anonymously
                                         </button>
                                     </div>
 
@@ -734,12 +728,12 @@ export default function BookDetail({
                                         disabled={reviewLoading}
                                         type="button"
                                     >
-                                        {reviewLoading ? "Guardando..." : reviewIsPublic ? "Guardar y publicar anónimamente" : "Guardar reseña (privada)"}
+                                        {reviewLoading ? "Saving..." : reviewIsPublic ? "Save and publish anonymously" : "Save review (private)"}
                                     </button>
 
                                     <div style={{ fontSize: 12, color: MUTED }}>
-                                        Estado actual:{" "}
-                                        <strong style={{ color: ACCENT }}>{reviewIsPublic ? "Publicada (anónima)" : "Privada"}</strong>
+                                        Current status:{" "}
+                                        <strong style={{ color: ACCENT }}>{reviewIsPublic ? "Published (anonymous)" : "Private"}</strong>
                                     </div>
 
                                     {/* TU RESEÑA GUARDADA (solo tú) */}
@@ -753,19 +747,19 @@ export default function BookDetail({
                                             }}
                                         >
                                             <div style={{ display: "flex", justifyContent: "space-between", gap: 10 }}>
-                                                <div style={{ fontWeight: 900, color: ACCENT }}>Tu reseña guardada</div>
+                                                <div style={{ fontWeight: 900, color: ACCENT }}>Your saved review</div>
                                                 <div style={{ fontSize: 12, color: MUTED }}>⭐ {myReview.rating || "?"}/5</div>
                                             </div>
 
                                             <div style={{ marginTop: 8, whiteSpace: "pre-wrap", color: ACCENT }}>{myReview.text}</div>
 
                                             <div style={{ marginTop: 8, fontSize: 12, color: MUTED }}>
-                                                {myReview.isPublic ? "También está publicada (anónima)" : "No está publicada"}
+                                                {myReview.isPublic ? "It is also published (anonymous)" : "It is not published"}
                                             </div>
 
                                             {myReview.updatedAt && (
                                                 <div style={{ marginTop: 6, fontSize: 11, color: MUTED }}>
-                                                    Última actualización: {new Date(myReview.updatedAt).toLocaleString()}
+                                                    Last updated: {new Date(myReview.updatedAt).toLocaleString()}
                                                 </div>
                                             )}
 
@@ -775,22 +769,22 @@ export default function BookDetail({
                                                 disabled={reviewLoading}
                                                 type="button"
                                             >
-                                                {reviewLoading ? "Cargando..." : "Recargar mi reseña"}
+                                                {reviewLoading ? "Loading..." : "Reload my review"}
                                             </button>
                                         </div>
                                     ) : (
-                                        <div style={{ fontSize: 12, color: MUTED }}>Todavía no has guardado una reseña privada para este libro.</div>
+                                        <div style={{ fontSize: 12, color: MUTED }}>You have not saved a private review for this book yet.</div>
                                     )}
 
                                     <button onClick={() => cargarResenasPublicas(book.id)} style={ghostBtn} type="button">
-                                        Ver reseñas anónimas de otros
+                                        See anonymous reviews from others
                                     </button>
 
                                     {publicReviewsLoading ? (
-                                        <p style={{ opacity: 0.7, margin: 0 }}>Cargando reseñas...</p>
+                                        <p style={{ opacity: 0.7, margin: 0 }}>Loading reviews...</p>
                                     ) : publicReviews.length === 0 ? (
                                         // si no hay resultados
-                                        <p style={{ opacity: 0.7, margin: 0 }}>Todavía no hay reseñas públicas para este libro.</p>
+                                        <p style={{ opacity: 0.7, margin: 0 }}>There are no public reviews for this book yet.</p>
                                     ) : (
                                         <div style={{ display: "grid", gap: 10, marginTop: 4 }}>
                                             {publicReviews.map((r) => (
@@ -804,7 +798,7 @@ export default function BookDetail({
                                                     }}
                                                 >
                                                     <div style={{ display: "flex", justifyContent: "space-between", gap: 10 }}>
-                                                        <div style={{ fontWeight: 900, color: ACCENT }}>{r.authorLabel || "Anónimo"}</div>
+                                                        <div style={{ fontWeight: 900, color: ACCENT }}>{r.authorLabel || "Anonymous"}</div>
                                                         <div style={{ fontSize: 12, color: MUTED }}>⭐ {r.rating || "?"}/5</div>
                                                     </div>
 
@@ -849,13 +843,12 @@ export default function BookDetail({
                                                 ...inputStyle,
                                                 color: noteMood ? "#222" : MUTED,
                                             }}
-                                            title="¿Cómo te sientes al escribir esta nota?"
+                                            title="How do you feel while writing this note?"
                                         >
                                             {/* placeholder */}
                                             <option value="" style={{ color: MUTED }}>
                                                 Mood (optional)
                                             </option>
-
 
                                             {/* moods reales */}
                                             {MOODS.filter((m) => m !== "").map((m) => (
@@ -867,14 +860,14 @@ export default function BookDetail({
                                     </div>
 
                                     <input
-                                        placeholder="Capítulo / parte (opcional)"
+                                        placeholder="Chapter / part (optional)"
                                         value={noteChapter}
                                         onChange={(e) => setNoteChapter(e.target.value)}
                                         style={inputStyle}
                                     />
 
                                     <textarea
-                                        placeholder="Escribe tu nota..."
+                                        placeholder="Write your note..."
                                         value={noteText}
                                         onChange={(e) => setNoteText(e.target.value)}
                                         rows={4}
@@ -882,21 +875,21 @@ export default function BookDetail({
                                     />
 
                                     <input
-                                        placeholder="Frase destacada (opcional)"
+                                        placeholder="Highlighted quote (optional)"
                                         value={noteQuote}
                                         onChange={(e) => setNoteQuote(e.target.value)}
                                         style={inputStyle}
                                     />
 
                                     <button onClick={() => crearNota(book.id)} style={primaryBtn} type="button">
-                                        Guardar nota
+                                        Save note
                                     </button>
                                 </div>
 
                                 {notesLoading ? (
-                                    <p style={{ opacity: 0.7, margin: 0 }}>Cargando notas...</p>
+                                    <p style={{ opacity: 0.7, margin: 0 }}>Loading notes...</p>
                                 ) : notes.length === 0 ? (
-                                    <p style={{ opacity: 0.7, margin: 0 }}>Todavía no hay notas para este libro.</p>
+                                    <p style={{ opacity: 0.7, margin: 0 }}>There are no notes for this book yet.</p>
                                 ) : (
                                     <div style={{ display: "grid", gap: 10 }}>
                                         {notes.map((n) => (
@@ -916,13 +909,13 @@ export default function BookDetail({
                                                         {/* mood al editar la nota (opcional) */}
                                                         <div style={{ display: "grid", gap: 6 }}>
                                                             <div style={{ fontSize: 12, color: MUTED, fontWeight: 800 }}>
-                                                                Mood (opcional)
+                                                                Mood (optional)
                                                             </div>
                                                             <select
                                                                 value={editMood}
                                                                 onChange={(e) => setEditMood(e.target.value)}
                                                                 style={inputStyle}
-                                                                title="Actualizar mood de la nota"
+                                                                title="Update note mood"
                                                             >
                                                                 <option value="">—</option>
                                                                 {MOODS.filter((m) => m !== "").map((m) => (
@@ -936,7 +929,7 @@ export default function BookDetail({
                                                         <input
                                                             value={editChapter}
                                                             onChange={(e) => setEditChapter(e.target.value)}
-                                                            placeholder="Capítulo / parte (opcional)"
+                                                            placeholder="Chapter / part (optional)"
                                                             style={inputStyle}
                                                         />
 
@@ -950,7 +943,7 @@ export default function BookDetail({
                                                         <input
                                                             value={editQuote}
                                                             onChange={(e) => setEditQuote(e.target.value)}
-                                                            placeholder="Frase destacada (opcional)"
+                                                            placeholder="Highlighted quote (optional)"
                                                             style={inputStyle}
                                                         />
 
@@ -964,7 +957,7 @@ export default function BookDetail({
                                                                 }}
                                                                 type="button"
                                                             >
-                                                                ✅ Guardar
+                                                                ✅ Save
                                                             </button>
                                                             <button
                                                                 onClick={cancelarEditarNota}
@@ -975,7 +968,7 @@ export default function BookDetail({
                                                                 }}
                                                                 type="button"
                                                             >
-                                                                ✖ Cancelar
+                                                                ✖ Cancel
                                                             </button>
                                                         </div>
                                                     </div>
@@ -1016,7 +1009,7 @@ export default function BookDetail({
                                                                 }}
                                                                 type="button"
                                                             >
-                                                                Editar
+                                                                Edit
                                                             </button>
                                                             <button
                                                                 onClick={() => borrarNota(n.id)}
@@ -1027,7 +1020,7 @@ export default function BookDetail({
                                                                 }}
                                                                 type="button"
                                                             >
-                                                                Borrar
+                                                                Delete
                                                             </button>
                                                         </div>
                                                     </>
@@ -1071,9 +1064,9 @@ export default function BookDetail({
                             }}
                         >
                             <div style={{ display: "flex", justifyContent: "space-between", gap: 10 }}>
-                                <div style={{ fontWeight: 900, color: ACCENT }}>{authorName || "Autor/a"}</div>
+                                <div style={{ fontWeight: 900, color: ACCENT }}>{authorName || "Author"}</div>
                                 <button onClick={() => setAuthorOpen(false)} style={{ ...ghostBtn, width: "auto" }} type="button">
-                                    Cerrar
+                                    Close
                                 </button>
                             </div>
 
@@ -1106,10 +1099,10 @@ export default function BookDetail({
 
                                 <div style={{ flex: 1, minWidth: 0 }}>
                                     {authorLoading ? (
-                                        <div style={{ fontSize: 13, color: MUTED }}>Cargando biografía...</div>
+                                        <div style={{ fontSize: 13, color: MUTED }}>Loading biography...</div>
                                     ) : (
                                         <div style={{ fontSize: 13, color: ACCENT, whiteSpace: "pre-wrap", lineHeight: 1.5 }}>
-                                            {authorBio || "No hay biografía disponible."}
+                                            {authorBio || "No biography available."}
                                         </div>
                                     )}
                                 </div>
@@ -1145,9 +1138,9 @@ export default function BookDetail({
                         }}
                     >
                         <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "center" }}>
-                            <div style={{ fontWeight: 900, color: ACCENT }}>Relecturas</div>
+                            <div style={{ fontWeight: 900, color: ACCENT }}>Rereads</div>
                             <button onClick={() => setRereadOpen(false)} style={{ ...ghostBtn, width: "auto" }} type="button">
-                                Cerrar
+                                Close
                             </button>
                         </div>
 
@@ -1156,7 +1149,7 @@ export default function BookDetail({
                                 type="button"
                                 onClick={() => setRereadDraft((v) => Math.max(0, (Number(v) || 0) - 1))}
                                 style={{ ...ghostBtn, width: 44, padding: 10 }}
-                                title="Restar 1"
+                                title="Subtract 1"
                             >
                                 −
                             </button>
@@ -1173,14 +1166,14 @@ export default function BookDetail({
                                 type="button"
                                 onClick={() => setRereadDraft((v) => (Number(v) || 0) + 1)}
                                 style={{ ...ghostBtn, width: 44, padding: 10 }}
-                                title="Sumar 1"
+                                title="Add 1"
                             >
                                 +
                             </button>
                         </div>
 
                         <button onClick={guardarRelecturas} style={{ ...primaryBtn, marginTop: 12 }} type="button">
-                            Guardar
+                            Save
                         </button>
 
                     </div>
