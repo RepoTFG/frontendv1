@@ -580,23 +580,8 @@ export default function Diary({ books, setSelectedBook, styles }) {
                 key={r.id}
                 type="button"
                 onClick={() => {
-                    const existing = bookById.get(String(r.bookId));
-                    if (existing) {
-                        setSelectedBook(existing);
-                        return;
-                    }
-
-                    setSelectedBook({
-                        id: r.bookId,
-                        title: resolvedTitle,
-                        author: resolvedAuthor,
-                        cover: { url: r.coverUrl || "" },
-                        status: "to_read",
-                        shelves: [],
-                        openLibrary: { workKey: "", authorKey: "" },
-                        readCount: 0,
-                        _deleted: true,
-                    });
+                    setListViewType("reviews");
+                    setListViewOpen(true);
                 }}
                 style={{
                     textAlign: "left",
@@ -753,6 +738,7 @@ export default function Diary({ books, setSelectedBook, styles }) {
                         <div style={sectionCard}>
                             {sectionTitleRow(
                                 "Notes",
+                                "Your recent reading notes.",
                                 () => {
                                     setListViewType("notes");
                                     setListViewOpen(true);
@@ -773,6 +759,7 @@ export default function Diary({ books, setSelectedBook, styles }) {
                         <div style={sectionCard}>
                             {sectionTitleRow(
                                 "Quotes",
+                                "Highlighted passages you wanted to keep.",
                                 () => {
                                     setListViewType("quotes");
                                     setListViewOpen(true);
@@ -793,6 +780,7 @@ export default function Diary({ books, setSelectedBook, styles }) {
                         <div style={sectionCard}>
                             {sectionTitleRow(
                                 "Reviews",
+                                "Your latest book reviews.",
                                 () => {
                                     setListViewType("reviews");
                                     setListViewOpen(true);
