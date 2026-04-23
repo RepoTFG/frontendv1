@@ -61,13 +61,13 @@ export default function Discover({
     };
 
     // top tabs
-    const [tab, setTab] = useState("for_you"); // for_you, mood, reviews
+    const [tab, setTab] = useState("for_you"); // for_you, reviews
 
     const tabs = useMemo(
         () => [
             { key: "for_you", label: "For you" },
             { key: "reviews", label: "Reviews" },
-            { key: "mood", label: "Mood" },
+
         ],
         []
     );
@@ -382,41 +382,6 @@ export default function Discover({
         ],
         []
     );
-
-    const [moodExpanded, setMoodExpanded] = useState(true); // abre/cierra panel
-    const [selectedMood, setSelectedMood] = useState("");
-    const [moodText, setMoodText] = useState(""); // texto opcional para que el usuario pueda dar más info
-
-    const [loading, setLoading] = useState(false);
-    const [serverMood, setServerMood] = useState("");
-    const [blurb, setBlurb] = useState(""); // texto explicativo por cada mood
-    const [searchTerms, setSearchTerms] = useState([]); // terms que el backend usa para buscar en OpenLibrary
-    const [items, setItems] = useState([]);
-    const [error, setError] = useState("");
-
-    // recogemos el mood seleccionado por el user, llamando al backend y recibiendo recomendaciones para actualizar el estado
-    const fetchMoodRecs = async ({ mood, moodText } = {}) => {
-        setLoading(true);
-        setError("");
-        try {
-            const token = await auth.currentUser.getIdToken();
-            // post mood
-            const data = await api.discoverMood(token, { mood, moodText, limit: 12 });
-
-            setServerMood(data?.mood || "");
-            setBlurb(data?.blurb || "");
-            setSearchTerms(Array.isArray(data?.searchTerms) ? data.searchTerms : []);
-            setItems(Array.isArray(data?.recommendations) ? data.recommendations : []);
-        } catch (e) {
-            setError(e.message || "Error loading recommendations");
-            setServerMood("");
-            setBlurb("");
-            setSearchTerms([]);
-            setItems([]);
-        } finally {
-            setLoading(false);
-        }
-    };
 
     // card para luego reusar: cover, título, subtítulo y opcional rightslot (emojis para feedback)
     const CardRow = ({ coverUrl, titleText, subtitleText, rightSlot }) => (
@@ -1287,131 +1252,6 @@ export default function Discover({
                             ))
                         )}
                     </div>
-                </div>
-            )}
-
-            {/* recommendation por mood */}
-            {tab === "mood" && (
-                <div style={{ display: "grid", gap: 12 }}>
-                    {/* header + expand */}
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
-                        <div>
-                            <div style={{ fontWeight: 900, color: ACCENT }}>Mood</div>
-                            <div style={{ marginTop: 6, color: MUTED, fontSize: 13 }}>How do you feel today?</div>
-                        </div>
-
-                        <button
-                            type="button"
-                            style={pill(false)}
-                            onClick={() => setMoodExpanded((v) => !v)}
-                            title={moodExpanded ? "Collapse" : "Expand"}
-                        >
-                            {moodExpanded ? "▾" : "▸"}
-                        </button>
-                    </div>
-
-                    {moodExpanded && (
-                        <>
-                            {/* chips */}
-                            <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-                                {moods.map((m) => (
-                                    <button
-                                        key={m.key}
-                                        type="button"
-                                        style={pill(selectedMood === m.key)}
-                                        onClick={() => {
-                                            const next = selectedMood === m.key ? "" : m.key;
-                                            setSelectedMood(next);
-                                            fetchMoodRecs({ mood: next, moodText: "" });
-                                        }}
-                                    >
-                                        {m.label}
-                                    </button>
-                                ))}
-                            </div>
-
-                            {/* optional mood text */}
-                            <input
-                                value={moodText}
-                                onChange={(e) => setMoodText(e.target.value)}
-                                placeholder='Describe how you feel (optional), e.g. "I feel overwhelmed"'
-                                style={inputStyle}
-                            />
-
-                            <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-                                <button
-                                    type="button"
-                                    style={ghostBtn}
-                                    onClick={() => fetchMoodRecs({ mood: "", moodText })}
-                                    disabled={loading}
-                                >
-                                    {loading ? "Loading..." : "Get recommendations"}
-                                </button>
-
-                                <button
-                                    type="button"
-                                    style={ghostBtn}
-                                    onClick={() => {
-                                        setSelectedMood("");
-                                        setMoodText("");
-                                        setServerMood("");
-                                        setBlurb("");
-                                        setSearchTerms([]);
-                                        setItems([]);
-                                        setError("");
-                                    }}
-                                >
-                                    Clear
-                                </button>
-                            </div>
-
-                            {/* status */}
-                            <div style={{ color: MUTED, fontSize: 13 }}>
-                                {error
-                                    ? `⚠️ ${error}`
-                                    : serverMood
-                                        ? `Mood: ${serverMood}${blurb ? ` · ${blurb}` : ""}`
-                                        : ""}
-                            </div>
-
-                            {searchTerms.length > 0 && !error && (
-                                <div style={{ color: MUTED, fontSize: 12 }}>
-                                    Search used: {searchTerms.join(" · ")}
-                                </div>
-                            )}
-
-                            {/* results */}
-                            <div style={{ display: "grid", gap: 10 }}>
-                                {items.map((b) => {
-                                    const cover = b.coverId ? `https://covers.openlibrary.org/b/id/${b.coverId}-M.jpg` : "";
-                                    return (
-                                        <CardRow
-                                            key={(b.key || "") + (b.title || "")}
-                                            coverUrl={cover}
-                                            titleText={b.title}
-                                            subtitleText={`${b.author || "Unknown author"}${b.firstPublishYear ? ` · ${b.firstPublishYear}` : ""}`}
-                                            rightSlot={
-                                                <>
-                                                    <button type="button" style={pill(false)} title="Good recommendation">
-                                                        👍
-                                                    </button>
-                                                    <button type="button" style={pill(false)} title="Bad recommendation">
-                                                        👎
-                                                    </button>
-                                                </>
-                                            }
-                                        />
-                                    );
-                                })}
-
-                                {!loading && items.length === 0 && !error && (
-                                    <div style={{ color: MUTED, fontSize: 13 }}>
-                                        Choose a mood or write how you feel to see recommendations.
-                                    </div>
-                                )}
-                            </div>
-                        </>
-                    )}
                 </div>
             )}
         </div>

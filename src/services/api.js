@@ -185,14 +185,6 @@ export const api = {
         return authFetch(path, { token });
     },
 
-    // mood recommendation
-    //discoverMood: (token, payload) =>
-    //    authFetch("/api/discover/mood", {
-    //        token,
-    //        method: "POST",
-    //        headers: { "Content-Type": "application/json" },
-    //        body: JSON.stringify(payload || {}),
-    //    }),
     // AI companion
     // enviar nota backend para crear reflexión
     readingCompanionReflect: (token, payload) =>
