@@ -130,18 +130,18 @@ export default function AuthPage() {
                     </div>
                     <div style={{ marginTop: 6, color: MUTED, fontWeight: 700, lineHeight: 1.4 }}>
                         {mode === "login"
-                            ? "Accede a tu biblioteca y tu diario."
-                            : "Crea tu cuenta para empezar tu Readroom."}
+                            ? "Enter your reading space."
+                            : "Create your account to start your ReadRoom."}
                     </div>
                 </div>
 
                 {/* tabs */}
                 <div style={{ display: "flex", gap: 10, marginBottom: 12 }}>
                     <button type="button" onClick={() => setMode("login")} style={tabBtn(mode === "login")}>
-                        Iniciar sesión
+                        Sign in
                     </button>
                     <button type="button" onClick={() => setMode("register")} style={tabBtn(mode === "register")}>
-                        Crear cuenta
+                        Create account
                     </button>
                 </div>
 
@@ -157,26 +157,26 @@ export default function AuthPage() {
                 >
                     <div style={{ display: "grid", gap: 10 }}>
                         <button type="button" onClick={loginGoogle} style={ghostBtn} disabled={loading}>
-                            Continuar con Google
+                            Continue with Google
                         </button>
 
                         {/* separador */}
                         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                             <div style={{ height: 1, background: BORDER, flex: 1 }} />
-                            <div style={{ fontSize: 12, color: MUTED, fontWeight: 800 }}>o</div>
+                            <div style={{ fontSize: 12, color: MUTED, fontWeight: 800 }}>or</div>
                             <div style={{ height: 1, background: BORDER, flex: 1 }} />
                         </div>
 
                         <div style={{ fontSize: 12, color: MUTED, fontWeight: 900 }}>Email</div>
                         <input
-                            placeholder="tuemail@ejemplo.com"
+                            placeholder="you@example.com"
                             value={email}
                             onChange={(e) => setEmail(e.target.value)}
                             style={inputStyle}
                             autoComplete="email"
                         />
 
-                        <div style={{ fontSize: 12, color: MUTED, fontWeight: 900, marginTop: 6 }}>Contraseña</div>
+                        <div style={{ fontSize: 12, color: MUTED, fontWeight: 900, marginTop: 6 }}>Password</div>
                         <input
                             type="password"
                             placeholder="••••••••"
@@ -187,7 +187,7 @@ export default function AuthPage() {
                         />
 
                         <button type="button" onClick={handlePrimary} style={primaryBtn} disabled={loading}>
-                            {loading ? "Procesando..." : mode === "login" ? "Entrar" : "Crear cuenta"}
+                            {loading ? "Processing..." : mode === "login" ? "Enter ReadRoom" : "Create account"}
                         </button>
 
                         {error && (

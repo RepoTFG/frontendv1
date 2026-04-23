@@ -55,7 +55,7 @@ export default function FinishedBookshelf({ items, onPick, styles }) {
                 >
                     {books.length === 0 ? (
                         <div style={{ color: MUTED, fontSize: 13, fontWeight: 700 }}>
-                            Aquí irán los libros terminados.
+                            Finished books will be here.
                         </div>
                     ) : (
                         <>

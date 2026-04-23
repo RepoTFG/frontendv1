@@ -79,7 +79,7 @@ export default function App() {
     const pageWrap = {
         background: "#FBFAF8",
         minHeight: "100vh",
-        paddingBottom: 78, // espacio para bottom nav
+        paddingBottom: 92, // espacio para bottom nav
     };
     // contenido centrado
     const container = {
