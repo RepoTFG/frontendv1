@@ -210,6 +210,16 @@ export const api = {
         }),
 
     // book of the day
+    // book of the day sin IA
+    getBookOfDay: (token) => authFetch("/api/discover/book-of-day", { token }),
+    getBookOfDayFeedback: (token) => authFetch("/api/discover/book-of-day/feedback", { token }),
+    sendBookOfDayFeedback: (token, value) =>
+        authFetch("/api/discover/book-of-day/feedback", {
+            token,
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ value }),
+        }),
     getBookOfDayAI: (token) => authFetch("/api/discover/book-of-day-ai", { token }),
 
     getBookOfDayAIFeedback: (token) => authFetch("/api/discover/book-of-day-ai/feedback", { token }),
