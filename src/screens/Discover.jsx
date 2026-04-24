@@ -9,8 +9,6 @@ export default function Discover({
                                    ACCENT,
                                    MUTED,
                                    ghostBtn,
-                                   bookOfDay,
-                                   bookOfDayLoading,
                                    books,
                                    customShelves,
                                    addFromResult,
@@ -72,43 +70,6 @@ export default function Discover({
       []
   );
 
-  // for you (placeholder)
-  const bookOfDayData = useMemo(() => {
-    const titleText =
-        bookOfDay?.book?.title ||
-        bookOfDay?.title ||
-        "Placeholder: Book title";
-
-    const authorText =
-        bookOfDay?.book?.author ||
-        bookOfDay?.author ||
-        "Author";
-
-    const coverUrl =
-        bookOfDay?.book?.coverUrl ||
-        bookOfDay?.coverUrl ||
-        "";
-
-    const subtitleText =
-        bookOfDay?.reason ||
-        bookOfDay?.subtitle ||
-        "";
-
-    return {
-      title: "Book of the day",
-      subtitle: subtitleText,
-      book: {
-        title: titleText,
-        author: authorText,
-        coverUrl,
-      },
-    };
-  }, [bookOfDay]);
-
-  // feedback
-  const [bookOfDayFeedback, setBookOfDayFeedback] = useState(0); // 1 like, -1 dislike, 0 none
-  const [bookOfDayFeedbackLoading, setBookOfDayFeedbackLoading] = useState(false);
-
   // book of the day AI
   const [bookOfDayAI, setBookOfDayAI] = useState(null);
   const [bookOfDayAILoading, setBookOfDayAILoading] = useState(false);
@@ -134,27 +95,6 @@ export default function Discover({
         };
     }, [bookOfDayAI]);
 
-  const bookOfDayDoc = useMemo(() => {
-    if (!bookOfDayData?.book?.title) return null;
-
-    const workKey =
-        bookOfDay?.openLibrary?.workKey ||
-        bookOfDay?.book?.openLibrary?.workKey ||
-        "";
-
-    const coverId =
-        bookOfDay?.openLibrary?.coverId ??
-        bookOfDay?.book?.openLibrary?.coverId ??
-        null;
-
-    return {
-      key: workKey || `bod-${bookOfDayData.book.title}-${bookOfDayData.book.author}`,
-      title: bookOfDayData.book.title,
-      author_name: [bookOfDayData.book.author || ""],
-      cover_i: coverId,
-    };
-  }, [bookOfDay, bookOfDayData]);
-
   const bookOfDayAIDoc = useMemo(() => {
     if (!bookOfDayAIData?.book?.title) return null;
 
@@ -168,27 +108,6 @@ export default function Discover({
       cover_i: coverId,
     };
   }, [bookOfDayAI, bookOfDayAIData]);
-
-  const existingBookOfDay = useMemo(() => {
-    if (!bookOfDayDoc) return null;
-
-    const byCover = bookOfDayDoc.cover_i
-        ? books.find((b) => b?.cover?.openLibraryCoverId === bookOfDayDoc.cover_i)
-        : null;
-
-    const titleNormalized = (bookOfDayDoc.title || "").trim().toLowerCase();
-    const authorNormalized = ((bookOfDayDoc.author_name && bookOfDayDoc.author_name[0]) || "")
-        .trim()
-        .toLowerCase();
-
-    const byText = books.find((b) => {
-      const bt = (b.title || "").trim().toLowerCase();
-      const ba = (b.author || "").trim().toLowerCase();
-      return bt === titleNormalized && ba === authorNormalized;
-    });
-
-    return byCover || byText || null;
-  }, [bookOfDayDoc, books]);
 
   const existingBookOfDayAI = useMemo(() => {
     if (!bookOfDayAIDoc) return null;
@@ -213,30 +132,16 @@ export default function Discover({
 
   // clave por día para recordar si el libro ya fue revelado
   const revealStorageKey = useMemo(() => {
-    const day =
-        bookOfDay?.day ||
-        bookOfDayAI?.day ||
-        new Date().toISOString().slice(0, 10);
+    const day = bookOfDayAI?.day || new Date().toISOString().slice(0, 10);
 
     return `discover_ai_revealed_${day}`;
-  }, [bookOfDay?.day, bookOfDayAI?.day]);
+  }, [bookOfDayAI?.day]);
 
   // reviews feed
   const [reviewsFeed, setReviewsFeed] = useState([]);
   const [reviewsFeedLoading, setReviewsFeedLoading] = useState(false);
   const [reviewsFeedError, setReviewsFeedError] = useState("");
   const [reviewsQuery, setReviewsQuery] = useState("");
-
-  // cargamos feedback: pidiendo token y llamamos a endpoint GET actualizando el estado
-  const loadFeedback = async () => {
-    try {
-      const token = await auth.currentUser.getIdToken();
-      const data = await api.getBookOfDayFeedback(token);
-      setBookOfDayFeedback(data?.value || 0);
-    } catch (e) {
-      console.error(e);
-    }
-  };
 
   // cargamos feedback book of the day AI
   const loadAIFeedback = async () => {
@@ -284,20 +189,6 @@ export default function Discover({
     }
   };
 
-  // enviamos feedback: activamos loading, haciendo post al backend (1 o -1) y actualizamos estado
-  const sendFeedback = async (value) => {
-    try {
-      setBookOfDayFeedbackLoading(true);
-      const token = await auth.currentUser.getIdToken();
-      await api.sendBookOfDayFeedback(token, value);
-      setBookOfDayFeedback(value);
-    } catch (e) {
-      alert(e.message || "Error saving feedback");
-    } finally {
-      setBookOfDayFeedbackLoading(false);
-    }
-  };
-
   // enviamos feedback AI: activamos loading, haciendo post al backend (1 o -1) y actualizamos estado
   const sendAIFeedback = async (value) => {
     try {
@@ -311,13 +202,6 @@ export default function Discover({
       setBookOfDayAIFeedbackLoading(false);
     }
   };
-
-  // cuando cambie bookOfDay o Loading, revisamos si ya tiene un libro y que ya no esté cargando
-  useEffect(() => {
-    if (bookOfDay && !bookOfDayLoading) {
-      loadFeedback();
-    }
-  }, [bookOfDay, bookOfDayLoading]);
 
   useEffect(() => {
     if (bookOfDayAI) {
@@ -1081,58 +965,6 @@ export default function Discover({
                   One recommendation, chosen for today.
                 </div>
               </div>
-
-              {/* book of the day */}
-              {/*
-                    <div>
-                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
-                            <div style={{ fontWeight: 900, color: ACCENT }}>Book of the day</div>
-                            <div style={{ color: MUTED, fontSize: 12 }}>Daily</div>
-                        </div>
-
-                        <div style={{ marginTop: 6, color: MUTED, fontSize: 13 }}>
-                            {bookOfDayLoading ? "Loading..." : (bookOfDayData.subtitle || "")}
-                        </div>
-
-                        <div style={{ marginTop: 10 }}>
-                            <CardRow
-                                coverUrl={bookOfDayData.book.coverUrl}
-                                titleText={bookOfDayData.book.title}
-                                subtitleText={bookOfDayData.book.author}
-                                rightSlot={
-                                    <>
-                                        <button
-                                            type="button"
-                                            style={pill(bookOfDayFeedback === 1)}
-                                            title="Good recommendation"
-                                            disabled={bookOfDayFeedbackLoading || bookOfDayLoading}
-                                            onClick={() => sendFeedback(1)}
-                                        >
-                                            👍
-                                        </button>
-                                        <button
-                                            type="button"
-                                            style={pill(bookOfDayFeedback === -1)}
-                                            title="Bad recommendation"
-                                            disabled={bookOfDayFeedbackLoading || bookOfDayLoading}
-                                            onClick={() => sendFeedback(-1)}
-                                        >
-                                            👎
-                                        </button>
-                                    </>
-                                }
-                            />
-                            <StatusPicker
-                                doc={bookOfDayDoc}
-                                existingBook={existingBookOfDay}
-                            />
-                            <ShelfPicker
-                                doc={bookOfDayDoc}
-                                existingBook={existingBookOfDay}
-                            />
-                        </div>
-                    </div>
-                    */}
 
               {/* book of the day AI */}
               <HeroRevealCard
