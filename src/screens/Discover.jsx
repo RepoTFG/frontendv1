@@ -266,64 +266,6 @@ export default function Discover({
       }
   };
 
-  const moods = useMemo(
-      () => [
-        { key: "relaxed", label: "Relax" },
-        { key: "thoughtful", label: "Thoughtful" },
-        { key: "excited", label: "Excited" },
-        { key: "anxious", label: "Anxious" },
-        { key: "romantic", label: "Romantic" },
-        { key: "curious", label: "Curious" },
-      ],
-      []
-  );
-
-  // card para luego reusar: cover, título, subtítulo y opcional rightslot (emojis para feedback)
-  const CardRow = ({ coverUrl, titleText, subtitleText, rightSlot }) => (
-      <div
-          style={{
-            border: `1px solid ${BORDER}`,
-            borderRadius: 16,
-            padding: 12,
-            display: "flex",
-            gap: 12,
-            alignItems: "center",
-            background: "white",
-          }}
-      >
-        <div
-            style={{
-              width: 54,
-              height: 78,
-              borderRadius: 10,
-              border: `1px solid ${BORDER}`,
-              background: "#F6F3EF",
-              overflow: "hidden",
-              flex: "0 0 auto",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              color: MUTED,
-              fontSize: 12,
-              fontWeight: 900,
-            }}
-        >
-          {coverUrl ? (
-              <img src={coverUrl} alt={titleText} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-          ) : (
-              "Cover"
-          )}
-        </div>
-
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontWeight: 900, color: ACCENT, fontSize: 14 }}>{titleText}</div>
-          <div style={{ marginTop: 4, color: MUTED, fontSize: 13 }}>{subtitleText}</div>
-        </div>
-
-        {rightSlot ? <div style={{ display: "flex", gap: 8, alignItems: "center" }}>{rightSlot}</div> : null}
-      </div>
-  );
-
   const HeroRevealCard = ({
                             onReveal,
                             loading,
