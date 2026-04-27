@@ -203,9 +203,6 @@ export default function App() {
     }));
 
 
-
-
-
     // crear shelf personalizada --> usado en botón onClick "+ Crear"
     const crearShelf = async () => {
         const name = newShelfName.trim();
@@ -238,8 +235,6 @@ export default function App() {
             alert(e.message || "Error al eliminar shelf");
         }
     };
-
-
 
 
     // cambiar estado libro (PATCH /api/books/:id)

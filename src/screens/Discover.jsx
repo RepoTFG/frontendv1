@@ -227,15 +227,11 @@ export default function Discover({
       }
       }, [bookOfDayAI, revealStorageKey]);
 
-  //useEffect(() => {
-  //  if (tab !== "for_you") return;
-  //  loadBookOfDayAI();
-  //}, [tab]);
-
   useEffect(() => {
-    if (tab !== "reviews") return;
-    loadReviewsFeed(reviewsQuery);
+      if (tab !== "reviews") return;
+      loadReviewsFeed("");
   }, [tab]);
+
 
   // guardamos si el usuario ya reveló el libro de hoy
   useEffect(() => {

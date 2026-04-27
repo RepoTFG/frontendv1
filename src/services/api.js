@@ -2,6 +2,7 @@
 
 const API_BASE = process.env.REACT_APP_API_URL;
 
+
 // añado el helper --> parsea json de forma segura (por si hay respuesta vacía)
 async function safeJson(res) {
     try {
