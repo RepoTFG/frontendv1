@@ -1,0 +1,14 @@
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- fondo con bordes redondeados (rx) -->
+  <rect width="512" height="512" rx="120" fill="#FBFAF8"/>
+  <g stroke="#2F2A24" stroke-width="32" stroke-linecap="round" stroke-linejoin="round">
+    <!-- R izquierda -->
+    <path d="M236 142V378" />
+    <path d="M236 142L176 126C132 116 104 150 104 198C104 246 132 274 176 274H236" />
+    <path d="M176 274C140 296 118 334 108 378" />
+    <!-- R derecha -->
+    <path d="M276 142V378" />
+    <path d="M276 142L336 126C380 116 408 150 408 198C408 246 380 274 336 274H276" />
+    <path d="M336 274C372 296 394 334 404 378" />
+  </g>
+</svg>
