@@ -24,6 +24,7 @@ import Diary from "./screens/Diary";
 import Discover from "./screens/Discover";
 import Room from "./screens/Room";
 
+import SplashScreen from "./components/SplashScreen";
 
 export default function App() {
     const [user, setUser] = useState(null); // guardamos user autenticado
@@ -671,11 +672,22 @@ export default function App() {
     };
 
     useEffect(() => {
-        // escuchamos los cambios de sesión (se ejecuta cada vez que se inicia o cierra sesión)
+        const start = Date.now(); // momento en que arranca la app
+
         const unsub = onAuthStateChanged(auth, (u) => {
-            setUser(u); // guardamos usuario
-            setLoading(false); // ya hemos terminado de comprobar sesión
+            setUser(u);
+
+            const elapsed = Date.now() - start;
+            const MIN_TIME = 600; // tiempo mínimo de splash
+            const remaining = MIN_TIME - elapsed;
+
+            if (remaining > 0) {
+                setTimeout(() => setLoading(false), remaining);
+            } else {
+                setLoading(false);
+            }
         });
+
         return () => unsub();
     }, []);
 
@@ -735,7 +747,10 @@ export default function App() {
         return "Room";
     }, [activeTab]);
 
-    if (loading) return <p>Cargando...</p>; // si aun comprobando sesión
+    // if (loading) return <p>Cargando...</p>; // si aun comprobando sesión
+    if (loading) {
+        return <SplashScreen />;
+    }
     if (!user) return <AuthPage />; // no usuario logueado
 
     // si hay usuario logueado --> página
@@ -793,6 +808,17 @@ export default function App() {
                 editMood={editMood}
                 setEditMood={setEditMood}
                 addFromPreview={addFromPreview}
+                // al volver atrás, contador de relecturas también actualizado:
+                onBookUpdated={(bookId, changes) => {
+                    setBooks((prev) =>
+                        prev.map((b) =>
+                            b.id === bookId ? { ...b, ...changes } : b // si encontramos libro correcto = crear uno con los cambios
+                        )
+                    );
+                    setSelectedBook((prev) =>
+                        prev && prev.id === bookId ? { ...prev, ...changes } : prev // actualizar vista libro
+                    );
+                }}
             />
         );
     }

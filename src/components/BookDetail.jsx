@@ -49,7 +49,9 @@ export default function BookDetail({
                                        setNoteMood,
                                        editMood,
                                        setEditMood,
+                                       onBookUpdated, // actualizar relecturas
                                        addFromPreview,
+
                                    }) {
     // definimos el estilo
     // colores:
@@ -314,8 +316,12 @@ export default function BookDetail({
             const safe = Math.max(0, Math.floor(Number(rereadDraft) || 0));
 
             await api.patchBook(token, book.id, { readCount: safe });
-            // actualizar UI
+            // actualizar UI local
             setReadCount(safe);
+            // actualizar también el libro en library para que al volver atrás no desaparezca
+            if (typeof onBookUpdated === "function") {
+                onBookUpdated(book.id, { readCount: safe });
+            }
             setRereadOpen(false);
         } catch (e) {
             alert(e.message || "Error saving rereads");
@@ -730,9 +736,15 @@ export default function BookDetail({
                                         rows={4}
                                         style={{ ...inputStyle, resize: "vertical" }} // agrandamos solo en vertical
                                     />
-
-                                    <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
-                                        <div style={{ fontSize: 12, color: MUTED, fontWeight: 800, minWidth: 120 }}>Mode:</div>
+                                    <div
+                                        // modo de reseña en dos columnas para que en móvil queden al lado
+                                        style={{
+                                            display: "grid",
+                                            gridTemplateColumns: "1fr 1fr",
+                                            gap: 8,
+                                            alignItems: "center",
+                                        }}
+                                    >
 
                                         <button
                                             onClick={() => {

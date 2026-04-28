@@ -417,11 +417,9 @@ export default function Home({
 
                 <div
                     style={{
-                        display: "flex",
-                        gap: 10,
-                        overflowX: "auto",
-                        paddingBottom: 4,
-                        WebkitOverflowScrolling: "touch",
+                        display: "grid",
+                        gridTemplateColumns: "repeat(3, 1fr)",
+                        gap: 8,
                     }}
                 >
                     {[
@@ -446,21 +444,20 @@ export default function Home({
                             type="button"
                             onClick={() => setActiveTab(item.key)}
                             style={{
-                                minWidth: 150,
+                                minWidth: 0,
                                 border: `1px solid ${BORDER}`,
                                 borderRadius: 18,
                                 background: SOFT,
-                                padding: 14,
+                                padding: 12,
                                 textAlign: "left",
                                 cursor: "pointer",
-                                flex: "0 0 auto",
                             }}
                         >
                             <div
                                 style={{
                                     color: ACCENT,
                                     fontWeight: 900,
-                                    fontSize: 18,
+                                    fontSize: 16,
                                     lineHeight: 1.1,
                                 }}
                             >
@@ -471,7 +468,7 @@ export default function Home({
                                 style={{
                                     marginTop: 8,
                                     color: MUTED,
-                                    fontSize: 13,
+                                    fontSize: 11,
                                     lineHeight: 1.3,
                                 }}
                             >
