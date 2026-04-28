@@ -1,5 +1,5 @@
 // src/components/Section.jsx
-export default function Section({ title, items, onPick, styles, coverScale = 1 }) {
+export default function Section({ title, items, onPick, styles }) {
     const { ACCENT, SOFT, BORDER } = styles;
 
     return (
@@ -27,7 +27,7 @@ export default function Section({ title, items, onPick, styles, coverScale = 1 }
                     style={{
                         marginTop: 10,
                         display: "grid",
-                        gridTemplateColumns: `repeat(auto-fill, minmax(${140 * coverScale}px, 1fr))`, // adaptamos nº columnas al ancho disponible (aplicando el coverscale)
+                        gridTemplateColumns: "repeat(auto-fill, minmax(140px, 1fr))", // adaptamos nº columnas al ancho disponible
                         gap: 14,
                     }}
                 >
