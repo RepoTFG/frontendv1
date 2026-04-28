@@ -38,8 +38,6 @@ export default function Home({
     const debounceRef = useRef(null);
     const lastQueryRef = useRef("");
     const firstRenderRef = useRef(true);
-    // para que el usuario pueda agrandar o reducir las portadas del current reading
-    const [coverScale, setCoverScale] = useState(1); // 1 --> normal
 
     useEffect(() => {
         if (!query.trim()) setResultsOpen(false);
