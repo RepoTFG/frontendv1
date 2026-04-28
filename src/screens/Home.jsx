@@ -38,6 +38,8 @@ export default function Home({
     const debounceRef = useRef(null);
     const lastQueryRef = useRef("");
     const firstRenderRef = useRef(true);
+    // para que el usuario pueda agrandar o reducir las portadas del current reading (continue reading)
+    const [coverScale, setCoverScale] = useState(1); // 1 --> normal
 
     useEffect(() => {
         if (!query.trim()) setResultsOpen(false);
@@ -401,81 +403,63 @@ export default function Home({
             )}
 
             <div style={{ marginTop: 18 }}>
-                <div style={smallLabel}>Continue reading</div>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    {/* izquierda: título y derecha los botones */}
+                    <div style={smallLabel}>Continue reading</div>
+
+                    <div style={{ display: "flex", gap: 6 }}>
+                        <button
+                            // s --> valor anterior del scale, evitando bajar de 0.7
+                            onClick={() => setCoverScale((s) => Math.max(0.7, s - 0.25))}
+                            style={{
+                                width: 32,
+                                height: 32,
+                                borderRadius: 999,
+                                border: `1px solid ${BORDER}`,
+                                background: CARD,
+                                cursor: "pointer",
+                                fontWeight: 900,
+                                color: ACCENT,
+                            }}
+                            type="button"
+                        >
+                            −
+                        </button>
+
+                        <button
+                            // evitamos pasar de 1.4
+                            onClick={() => setCoverScale((s) => Math.min(1.4, s + 0.25))}
+                            style={{
+                                width: 32,
+                                height: 32,
+                                borderRadius: 999,
+                                border: `1px solid ${BORDER}`,
+                                background: CARD,
+                                cursor: "pointer",
+                                fontWeight: 900,
+                                color: ACCENT,
+                            }}
+                            type="button"
+                        >
+                            +
+                        </button>
+                    </div>
+                </div>
+
                 <div
                     style={{
                         ...homeCard,
                         padding: 12,
+                        marginTop: 8,
                     }}
                 >
-                    <Section title="" items={currentlyReading} onPick={(b) => setSelectedBook(b)} styles={styles}/>
-                </div>
-            </div>
-
-            <div style={{ marginTop: 18 }}>
-                <div style={smallLabel}>For this moment</div>
-
-                <div
-                    style={{
-                        display: "grid",
-                        gridTemplateColumns: "repeat(3, 1fr)",
-                        gap: 8,
-                    }}
-                >
-                    {[
-                        {
-                            key: "diary",
-                            label: "Reflect",
-                            sub: "Open diary",
-                        },
-                        {
-                            key: "discover",
-                            label: "Explore",
-                            sub: "Open discover",
-                        },
-                        {
-                            key: "room",
-                            label: "Relax",
-                            sub: "Open room",
-                        },
-                    ].map((item) => (
-                        <button
-                            key={item.key}
-                            type="button"
-                            onClick={() => setActiveTab(item.key)}
-                            style={{
-                                minWidth: 0,
-                                border: `1px solid ${BORDER}`,
-                                borderRadius: 18,
-                                background: SOFT,
-                                padding: 12,
-                                textAlign: "left",
-                                cursor: "pointer",
-                            }}
-                        >
-                            <div
-                                style={{
-                                    color: ACCENT,
-                                    fontWeight: 900,
-                                    fontSize: 16,
-                                    lineHeight: 1.1,
-                                }}
-                            >
-                                {item.label}
-                            </div>
-
-                            <div
-                                style={{
-                                    marginTop: 8,
-                                    color: MUTED,
-                                    fontSize: 11,
-                                    lineHeight: 1.3,
-                                }}
-                            >
-                                {item.sub}
-                            </div>
-                        </button>
-                    ))}
+                    <Section
+                        title=""
+                        items={currentlyReading}
+                        onPick={(b) => setSelectedBook(b)}
+                        styles={styles}
+                        coverScale={coverScale}
+                    />
                 </div>
             </div>
 
