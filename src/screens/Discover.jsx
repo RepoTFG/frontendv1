@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { auth } from "../firebase";
 import { api } from "../services/api";
+import { useRef } from "react";
 
 export default function Discover({
                                    BORDER,
@@ -77,7 +78,7 @@ export default function Discover({
   const [bookOfDayAIFeedbackLoading, setBookOfDayAIFeedbackLoading] = useState(false);
   const [aiRevealed, setAiRevealed] = useState(false);
   const [aiAnimating, setAiAnimating] = useState(false);
-
+  const bookOfDayAIRef = useRef(null);
   const bookOfDayAIData = useMemo(() => {
       const titleText = bookOfDayAI?.title || "";
       const authorText = bookOfDayAI?.author || "";
@@ -209,6 +210,10 @@ export default function Discover({
     }
   }, [bookOfDayAI]);
 
+  useEffect(() => {
+      bookOfDayAIRef.current = bookOfDayAI;
+  }, [bookOfDayAI]);
+
     useEffect(() => {
         let cancelled = false;
 
@@ -221,7 +226,7 @@ export default function Discover({
             setAiRevealed(wasRevealed);
 
             // si ya estaba revelado, cargamos el libro auto
-            if (wasRevealed && !bookOfDayAI) {
+            if (wasRevealed && !bookOfDayAIRef.current) {
                 const data = await loadBookOfDayAI();
 
                 if (!cancelled && !data) {
