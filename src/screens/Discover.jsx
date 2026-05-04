@@ -209,10 +209,33 @@ export default function Discover({
     }
   }, [bookOfDayAI]);
 
-  useEffect(() => {
-        setAiAnimating(false);
-        setBookOfDayAIFeedback(0);
-        setAiRevealed(false);
+    useEffect(() => {
+        let cancelled = false;
+
+        const restoreRevealState = async () => {
+            setAiAnimating(false);
+            setBookOfDayAIFeedback(0);
+
+            const wasRevealed = localStorage.getItem(revealStorageKey) === "1";
+
+            setAiRevealed(wasRevealed);
+
+            // si ya estaba revelado, cargamos el libro auto
+            if (wasRevealed && !bookOfDayAI) {
+                const data = await loadBookOfDayAI();
+
+                if (!cancelled && !data) {
+                    setAiRevealed(false);
+                    localStorage.removeItem(revealStorageKey);
+                }
+            }
+        };
+
+        restoreRevealState();
+
+        return () => {
+            cancelled = true;
+        };
     }, [revealStorageKey]);
 
   useEffect(() => {
@@ -239,7 +262,7 @@ export default function Discover({
                 setAiAnimating(false);
                 return;
             }
-
+            localStorage.setItem(revealStorageKey, "1");
             setAiRevealed(true);
         } catch (e) {
             console.error(e);
