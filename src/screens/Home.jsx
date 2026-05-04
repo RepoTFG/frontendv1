@@ -115,7 +115,6 @@ export default function Home({
                         maxWidth: 520,
                     }}
                 >
-                    A quieter space for reading, reflection, and keeping books close to you.
                 </div>
             </div>
 

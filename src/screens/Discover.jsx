@@ -210,22 +210,10 @@ export default function Discover({
   }, [bookOfDayAI]);
 
   useEffect(() => {
-      setAiAnimating(false);
-      setBookOfDayAIFeedback(0);
-      const alreadyRevealed = localStorage.getItem(revealStorageKey) === "true";
-      if (alreadyRevealed) {
-          loadBookOfDayAI();
-      } else {
-          setAiRevealed(false);
-      }
-      }, [revealStorageKey]);
-
-  useEffect(() => {
-      const alreadyRevealed = localStorage.getItem(revealStorageKey) === "true";
-      if (alreadyRevealed && bookOfDayAI) {
-          setAiRevealed(true);
-      }
-      }, [bookOfDayAI, revealStorageKey]);
+        setAiAnimating(false);
+        setBookOfDayAIFeedback(0);
+        setAiRevealed(false);
+    }, [revealStorageKey]);
 
   useEffect(() => {
       if (tab !== "reviews") return;
@@ -233,34 +221,32 @@ export default function Discover({
   }, [tab]);
 
 
-  // guardamos si el usuario ya reveló el libro de hoy
-  useEffect(() => {
-    if (aiRevealed) {
-      localStorage.setItem(revealStorageKey, "true");
-    }
-  }, [aiRevealed, revealStorageKey]);
 
+    const revealAIBook = async () => {
+        if (aiRevealed || aiAnimating || bookOfDayAILoading) return;
 
+        // empezamos a animar ya para que el tap funcione (antes empezaba animación después de esperar al backend)
+        setAiAnimating(true);
 
-  const revealAIBook = async () => {
-      if (aiRevealed || aiAnimating || bookOfDayAILoading) return;
-      try {
-          let data = bookOfDayAI;
-          if (!data) {
-              data = await loadBookOfDayAI();
-          }
+        try {
+            let data = bookOfDayAI;
 
-          if (!data) return;
-          setAiAnimating(true);
-          setTimeout(() => {
-              setAiRevealed(true);
-              setAiAnimating(false);
-            }, 320);
-      } catch (e) {
-          console.error(e);
-          setAiAnimating(false);
-      }
-  };
+            if (!data) {
+                data = await loadBookOfDayAI();
+            }
+
+            if (!data) {
+                setAiAnimating(false);
+                return;
+            }
+
+            setAiRevealed(true);
+        } catch (e) {
+            console.error(e);
+        } finally {
+            setAiAnimating(false);
+        }
+    };
 
   const HeroRevealCard = ({
                             onReveal,
@@ -368,66 +354,111 @@ export default function Discover({
                 }}
                 title="Reveal book"
             >
-              <AnimatePresence mode="wait">
-                  {(!revealed || !revealedCoverUrl) && !animating ? (
-                    <motion.img
-                        key="mystery"
-                        src="/mystery-book.png"
-                        alt="Mystery book"
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
-                        transition={{ duration: 0.2 }}
-                        style={{
-                          position: "absolute",
-                          inset: 0,
-                          width: "100%",
-                          height: "100%",
-                          objectFit: "cover",
-                          display: "block",
-                        }}
-                    />
-                ) : revealedCoverUrl ? (
-                    <motion.img
-                        key="revealed"
-                        src={revealedCoverUrl}
-                        alt="Revealed book"
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
-                        transition={{ duration: 0.25 }}
-                        style={{
-                          position: "absolute",
-                          inset: 0,
-                          width: "100%",
-                          height: "100%",
-                          objectFit: "cover",
-                          display: "block",
-                        }}
-                    />
-                ) : (
-                    <motion.div
-                        key="revealed-placeholder"
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
-                        transition={{ duration: 0.25 }}
-                        style={{
-                          position: "absolute",
-                          inset: 0,
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          color: MUTED,
-                          fontWeight: 900,
-                          fontSize: 12,
-                          background: "#F6F3EF",
-                        }}
-                    >
-                      Cover
-                    </motion.div>
-                )}
-              </AnimatePresence>
+                <AnimatePresence mode="wait">
+                    {loading || animating ? (
+                        <motion.div
+                            key="loading"
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            transition={{ duration: 0.2 }}
+                            style={{
+                                position: "absolute",
+                                inset: 0,
+                            }}
+                        >
+                            {/* imagen de fondo */}
+                            <img
+                                src="/mystery-book.png"
+                                alt="Mystery book"
+                                style={{
+                                    width: "100%",
+                                    height: "100%",
+                                    objectFit: "cover",
+                                    display: "block",
+                                }}
+                            />
+
+                            {/* overlay */}
+                            <div
+                                style={{
+                                    position: "absolute",
+                                    inset: 0,
+                                    display: "flex",
+                                    alignItems: "center",
+                                    justifyContent: "center",
+                                    background: "rgba(47, 42, 36, 0.35)",
+                                    backdropFilter: "blur(1px)",
+                                    color: "white",
+                                    fontWeight: 900,
+                                    fontSize: 13,
+                                    textAlign: "center",
+                                    padding: 12,
+                                    textShadow: "0 2px 8px rgba(0,0,0,0.35)",
+                                }}
+                            >
+                                Choosing your book...
+                            </div>
+                        </motion.div>
+                    ) : !revealed ? (
+                        <motion.img
+                            key="mystery"
+                            src="/mystery-book.png"
+                            alt="Mystery book"
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            transition={{ duration: 0.2 }}
+                            style={{
+                                position: "absolute",
+                                inset: 0,
+                                width: "100%",
+                                height: "100%",
+                                objectFit: "cover",
+                                display: "block",
+                            }}
+                        />
+                    ) : revealedCoverUrl ? (
+                        <motion.img
+                            key="revealed"
+                            src={revealedCoverUrl}
+                            alt="Revealed book"
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            transition={{ duration: 0.25 }}
+                            style={{
+                                position: "absolute",
+                                inset: 0,
+                                width: "100%",
+                                height: "100%",
+                                objectFit: "cover",
+                                display: "block",
+                            }}
+                        />
+                    ) : (
+                        <motion.div
+                            key="revealed-placeholder"
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            transition={{ duration: 0.25 }}
+                            style={{
+                                position: "absolute",
+                                inset: 0,
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                color: MUTED,
+                                fontWeight: 900,
+                                fontSize: 12,
+                                background: "#F6F3EF",
+                            }}
+                        >
+                            Cover
+                        </motion.div>
+                    )}
+                </AnimatePresence>
             </motion.button>
           </div>
 

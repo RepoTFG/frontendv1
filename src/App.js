@@ -573,7 +573,7 @@ export default function App() {
                 author,
                 status: finalStatus,
                 shelves: Array.isArray(shelves) ? shelves : [],
-                tags: ["biblioteca"],
+                tags: ["biblioteca"], // como prueba de uso, luego se podría aplicar un uso útil
                 genres: genresFromWork,
                 cover: {
                     source: "openlibrary",
