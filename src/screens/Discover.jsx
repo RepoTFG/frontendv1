@@ -1,8 +1,7 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { auth } from "../firebase";
 import { api } from "../services/api";
-import { useRef } from "react";
 
 export default function Discover({
                                    BORDER,
@@ -14,8 +13,6 @@ export default function Discover({
                                    customShelves,
                                    addFromResult,
                                    toggleBookShelf,
-                                   addStatusByKey,
-                                   setAddStatusByKey,
                                    setSelectedBook,
                                  }) {
   // estilos
@@ -604,7 +601,7 @@ export default function Discover({
               }}
               title="Good AI recommendation"
           >
-            <span style={{ fontSize: 18 }}>👍</span>
+            <span style={{ fontSize: 18 }}></span>
             This fits me
           </button>
 
@@ -629,7 +626,7 @@ export default function Discover({
               }}
               title="Bad AI recommendation"
           >
-            <span style={{ fontSize: 18 }}>👎</span>
+            <span style={{ fontSize: 18 }}></span>
             Not for now
           </button>
         </div>

@@ -664,7 +664,7 @@ export default function BookDetail({
                                         disabled={isDeleted}
                                         title={isDeleted ? "Unavailable (deleted book)" : undefined}
                                     >
-                                        🗑️ Delete book
+                                         Delete book
                                     </button>
                                 </div>
                             )}
@@ -1015,7 +1015,7 @@ export default function BookDetail({
                                                                 }}
                                                                 type="button"
                                                             >
-                                                                ✅ Save
+                                                                 Save
                                                             </button>
                                                             <button
                                                                 onClick={cancelarEditarNota}
@@ -1026,7 +1026,7 @@ export default function BookDetail({
                                                                 }}
                                                                 type="button"
                                                             >
-                                                                ✖ Cancel
+                                                                 Cancel
                                                             </button>
                                                         </div>
                                                     </div>

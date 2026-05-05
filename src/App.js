@@ -897,8 +897,6 @@ export default function App() {
                         customShelves={customShelves}
                         addFromResult={addFromResult}
                         toggleBookShelf={toggleBookShelf}
-                        addStatusByKey={addStatusByKey}
-                        setAddStatusByKey={setAddStatusByKey}
                         setSelectedBook={setSelectedBook}
                     />
                 )}
