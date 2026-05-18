@@ -284,7 +284,11 @@ export default function DiaryListView({
                                 </button>
                                 <button
                                     type="button"
-                                    onClick={() => empezarEditarNota(n)}
+                                    onClick={() => {
+                                        setMenuOpenId(null); // cerramos el menú de opciones
+                                        empezarEditarNota(n); // activamos la edición de la nota/cita
+                                        onClose(); // cerramos el modal de All notes / All quotes
+                                    }}
                                     style={{
                                         ...subtleBtn,
                                         width: "100%",

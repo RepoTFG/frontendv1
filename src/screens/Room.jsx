@@ -167,12 +167,6 @@ export default function Room({
 
     return (
         <>
-            <div style={cardStyle}>
-                <div style={{ fontWeight: 900, color: ACCENT, fontSize: 20 }}>Room</div>
-                <div style={{ marginTop: 6, color: MUTED, fontSize: 12 }}>
-                    Sesión iniciada: {user.email}
-                </div>
-            </div>
 
             <div style={{ ...cardStyle, marginTop: 14 }}>
                 <div style={{ fontWeight: 900, color: ACCENT, fontSize: 18 }}>

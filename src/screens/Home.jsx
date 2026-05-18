@@ -152,7 +152,7 @@ export default function Home({
 
             {/* resultados tipo cards */}
             {results.length > 0 && (
-                <div style={{ marginTop: 14 }}>
+                <div style={{ marginTop: 14, width: "100%", maxWidth: "100%", overflow: "hidden"  }}>
                     <div
                         style={{
                             border: `1px solid ${BORDER}`,
@@ -166,7 +166,7 @@ export default function Home({
                         }}
                     >
                         <div style={{ fontWeight: 900, color: ACCENT }}>
-                            Results ({results.length})
+                            Results
                         </div>
 
                         {resultsOpen ? (
@@ -248,16 +248,20 @@ export default function Home({
                                             padding: 12,
                                             display: "flex",
                                             gap: 12,
+                                            width: "100%",
+                                            maxWidth: "100%",
+                                            boxSizing: "border-box",
+                                            overflow: "hidden",
                                         }}
                                     >
                                         {cover ? (
                                             <img
                                                 src={cover}
                                                 alt="Portada"
-                                                style={{ width: 56, height: 84, objectFit: "cover", borderRadius: 12, border: `1px solid ${BORDER}` }}
+                                                style={{ width: 56, height: 84, objectFit: "cover", borderRadius: 12, border: `1px solid ${BORDER}`, flexShrink: 0, }}
                                             />
                                         ) : (
-                                            <div style={{ width: 56, height: 84, background: SOFT, borderRadius: 12, border: `1px solid ${BORDER}` }} />
+                                            <div style={{ width: 56, height: 84, background: SOFT, borderRadius: 12, border: `1px solid ${BORDER}`, flexShrink: 0, }} />
                                         )}
 
                                         <div style={{ flex: 1, minWidth: 0 }}>
@@ -314,7 +318,8 @@ export default function Home({
                                                                     cursor: "pointer",
                                                                     fontSize: 12,
                                                                     lineHeight: "16px",
-                                                                    whiteSpace: "nowrap",
+                                                                    whiteSpace: "normal",
+                                                                    textAlign: "center",
                                                                 }}
                                                             >
                                                                 {opt.label}
