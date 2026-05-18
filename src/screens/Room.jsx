@@ -112,6 +112,10 @@ export default function Room({
         borderRadius: 18,
         background: CARD,
         padding: 14,
+        width: "100%",
+        maxWidth: "100%",
+        boxSizing: "border-box", // incluye padding y borde dentro del ancho
+        overflow: "hidden", // recorta cualquier contenido que intenta salirse
     }), [BORDER, CARD]);
 
     const sectionLabel = {
@@ -203,7 +207,13 @@ export default function Room({
                     </div>
                 </div>
 
-                <div style={{ marginTop: 14 }}>
+                <div style={{
+                    marginTop: 14,
+                    width: "100%",
+                    maxWidth: "100%",
+                    overflow: "hidden", // evita que el input/audio se desborde fuera de la card
+                    boxSizing: "border-box",
+                }}>
                     <AmbientPlayer
                         styles={styles}
                         sessionActive={sessionActive}

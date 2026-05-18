@@ -245,11 +245,21 @@ export default function AmbientPlayer({
                         borderRadius: 14,
                         background: SOFT,
                         padding: 12,
+                        width: "100%",
+                        maxWidth: "100%",
+                        boxSizing: "border-box",
+                        overflow: "hidden", // evita que el input de archivo se salga
                     }}
                 >
                     <input
                         type="file"
                         accept="audio/*"
+                        style={{
+                            width: "100%",
+                            maxWidth: "100%",
+                            boxSizing: "border-box",
+                            overflow: "hidden", // evita desbordamiento del selector de archivo
+                        }}
                         onChange={(e) => {
                             // coger 1r archivo seleccionado
                             const file = e.target.files?.[0];
@@ -290,7 +300,11 @@ export default function AmbientPlayer({
                             loop={localLoop}
                             onPlay={() => setLocalPlaying(true)}
                             onPause={() => setLocalPlaying(false)}
-                            style={{ width: "100%" }}
+                            style={{
+                                width: "100%",
+                                maxWidth: "100%",
+                                display: "block",
+                            }}
                         />
 
                         <label
