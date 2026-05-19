@@ -23,7 +23,6 @@ export default function Discover({
     padding: 14,
   };
   const title = { fontWeight: 900, color: ACCENT };
-  const sub = { marginTop: 6, color: MUTED, fontSize: 13 };
   const divider = { height: 1, background: BORDER, margin: "14px 0" };
 
   // cambiamos estilos según se seleccione o no
@@ -296,36 +295,11 @@ export default function Discover({
             style={{
               display: "flex",
               alignItems: "flex-start",
-              justifyContent: "space-between",
+              justifyContent: "flex-end", // mantener el AI pick a la derecha
               gap: 10,
               marginBottom: 14,
             }}
         >
-          <div>
-            <div
-                style={{
-                  color: MUTED,
-                  fontSize: 12,
-                  fontWeight: 800,
-                  letterSpacing: "0.04em",
-                  textTransform: "uppercase",
-                }}
-            >
-              Today&apos;s pick
-            </div>
-            <div
-                style={{
-                  marginTop: 6,
-                  color: ACCENT,
-                  fontWeight: 900,
-                  fontSize: 24,
-                  lineHeight: 1.05,
-                  letterSpacing: "-0.03em",
-                }}
-            >
-              A book for today
-            </div>
-          </div>
 
           <div
               style={{
@@ -509,7 +483,7 @@ export default function Discover({
                         maxWidth: 340,
                       }}
                   >
-                    A story to keep you company today.
+                    A story to keep you company.
                   </div>
                 </>
             ) : (
@@ -902,9 +876,8 @@ export default function Discover({
   return (
       <div style={sectionWrap}>
         <div style={title}>Discover</div>
-        <div style={sub}>Recommendations, mood, and reviews.</div>
 
-        {/* tabs (for you, mood, reviews) */}
+        {/* tabs (for you, reviews) */}
         <div style={{ marginTop: 12, display: "flex", gap: 10, flexWrap: "wrap" }}>
           {tabs.map((t) => (
               <button key={t.key} type="button" style={pill(tab === t.key)} onClick={() => setTab(t.key)}>
@@ -933,7 +906,7 @@ export default function Discover({
                       textTransform: "uppercase",
                     }}
                 >
-                  Discover
+                    Today&apos;s pick
                 </div>
 
                 <div
@@ -945,7 +918,7 @@ export default function Discover({
                       letterSpacing: "-0.04em",
                     }}
                 >
-                  A book for today
+                  Book of the day
                 </div>
 
                 <div
@@ -956,7 +929,7 @@ export default function Discover({
                       maxWidth: 420,
                     }}
                 >
-                  One recommendation, chosen for today.
+                  One recommendation, chosen for you.
                 </div>
               </div>
 

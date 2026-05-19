@@ -66,8 +66,23 @@ export default function AICompanionModal({
             return answered >= 3;
         });
     }, [candidateNotes, getAnswersForNote]);
-    // según la pestaña esté abierta: completado o pendiente
-    const visible = tab === "completed" ? completed : pending;
+    // aunque la nota pase de completed a pending (o al revés)
+    // la seguimos mostrando mientras se edita para que no "salte"
+    const visible = useMemo(() => {
+        const base = tab === "completed" ? completed : pending;
+
+        // si la nota abierta ya no está en esta pestaña,
+        // la añadimos igualmente para que siga visible
+        if (openId) {
+            const openedNote = candidateNotes.find((n) => n.id === openId);
+
+            if (openedNote && !base.some((n) => n.id === openId)) {
+                return [openedNote, ...base];
+            }
+        }
+
+        return base;
+    }, [tab, completed, pending, openId, candidateNotes]);
 
     return (
         <div
@@ -199,13 +214,16 @@ export default function AICompanionModal({
                                     </div>
                                     {/* abrir/cerrar */}
                                     <div style={{ marginTop: 12, display: "flex", gap: 8, flexWrap: "wrap" }}>
-                                        <button
-                                            type="button"
-                                            onClick={() => setOpenId((prev) => prev === n.id ? null : n.id)}
-                                            style={subtleBtn}
-                                        >
-                                            {isOpen ? "Close" : "Open"}
-                                        </button>
+                                        {/* solo mostrar open si ya existen preguntas IA */}
+                                        {hasCompanion && (
+                                            <button
+                                                type="button"
+                                                onClick={() => setOpenId((prev) => prev === n.id ? null : n.id)}
+                                                style={subtleBtn}
+                                            >
+                                                {isOpen ? "Close" : "Open"}
+                                            </button>
+                                        )}
                                         {/* si no hay reflexión IA --> botón para generar */}
                                         {!hasCompanion ? (
                                             <button
