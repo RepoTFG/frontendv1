@@ -93,8 +93,8 @@ export default function AICompanionModal({
                 background: "rgba(0,0,0,0.35)",
                 display: "flex",
                 justifyContent: "center",
-                alignItems: "flex-end",
-                padding: 16,
+                alignItems: "center", // centrar modal verticalmente
+                padding: "32px 16px",
                 zIndex: 90,
             }}
         >
@@ -103,7 +103,7 @@ export default function AICompanionModal({
                 style={{
                     width: "100%",
                     maxWidth: 520,
-                    maxHeight: "88vh",
+                    maxHeight: "82vh",
                     overflow: "auto",
                     borderRadius: 24,
                     border: `1px solid ${BORDER}`,
