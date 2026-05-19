@@ -108,7 +108,7 @@ export default function AICompanionModal({
                     borderRadius: 24,
                     border: `1px solid ${BORDER}`,
                     background: CARD,
-                    padding: 14,
+                    padding: 12,
                 }}
             >
                 <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "center" }}>
@@ -127,7 +127,7 @@ export default function AICompanionModal({
                     </button>
                 </div>
 
-                <div style={{ marginTop: 14, display: "grid", gap: 10 }}>
+                <div style={{ marginTop: 14, display: "grid", gap: 8 }}>
                     {visible.length === 0 ? (
                         <div style={{ color: MUTED, fontSize: 13 }}>
                             No reflections in this section yet.
@@ -199,13 +199,13 @@ export default function AICompanionModal({
                                     {/* preview o texto nota */}
                                     <div
                                         style={{
-                                            marginTop: 10,
+                                            marginTop: 8,
                                             color: ACCENT,
                                             fontSize: 14,
-                                            lineHeight: 1.55,
+                                            lineHeight: 1.45,
                                             whiteSpace: "pre-wrap",
                                             display: isOpen ? "block" : "-webkit-box",
-                                            WebkitLineClamp: isOpen ? "unset" : 4,
+                                            WebkitLineClamp: isOpen ? "unset" : 3, // 3 lineas
                                             WebkitBoxOrient: isOpen ? "unset" : "vertical",
                                             overflow: isOpen ? "visible" : "hidden",
                                         }}
@@ -213,7 +213,7 @@ export default function AICompanionModal({
                                         {n.text || "Open this note to reflect on it."}
                                     </div>
                                     {/* abrir/cerrar */}
-                                    <div style={{ marginTop: 12, display: "flex", gap: 8, flexWrap: "wrap" }}>
+                                    <div style={{ marginTop: 10, display: "flex", gap: 8, flexWrap: "wrap" }}>
                                         {/* solo mostrar open si ya existen preguntas IA */}
                                         {hasCompanion && (
                                             <button
@@ -230,7 +230,7 @@ export default function AICompanionModal({
                                                 type="button"
                                                 onClick={() => reflectNote(n)}
                                                 style={{
-                                                    padding: "10px 12px",
+                                                    padding: "8px 12px",
                                                     borderRadius: 12,
                                                     border: `1px solid ${ACCENT}`,
                                                     background: ACCENT,
@@ -287,7 +287,7 @@ export default function AICompanionModal({
                                                     type="button"
                                                     onClick={() => saveCompanionAnswers(n.id, n)}
                                                     style={{
-                                                        padding: "10px 12px",
+                                                        padding: "8px 12px",
                                                         borderRadius: 12,
                                                         border: `1px solid ${ACCENT}`,
                                                         background: ACCENT,
