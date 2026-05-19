@@ -289,8 +289,6 @@ export default function Discover({
             padding: 18,
             background: "linear-gradient(180deg, #FFFEFC 0%, #F8F4EE 100%)",
             boxShadow: "0 12px 30px rgba(47,42,36,0.05)",
-            minHeight: 360,
-            boxSizing: "border-box",
           }}
       >
         <div
@@ -331,9 +329,6 @@ export default function Discover({
               style={{
                 display: "flex",
                 justifyContent: "center",
-                alignItems: "center",
-                width: "100%",
-                minHeight: 228,
               }}
           >
             <motion.button
@@ -355,8 +350,6 @@ export default function Discover({
                   cursor: loading || revealed || animating ? "default" : "pointer",
                   position: "relative",
                   boxShadow: "0 14px 28px rgba(47,42,36,0.10)",
-                  margin: "0 auto",
-                  flexShrink: 0,
                 }}
                 title="Reveal book"
             >
