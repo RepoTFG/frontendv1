@@ -388,7 +388,7 @@ export default function AmbientPlayer({
                     onClick={() => {
                         const embed = extractSpotifyEmbedUrl(spotifyInput);
                         if (!embed) {
-                            alert("Introduzca un link de Spotify válido.");
+                            alert("Enter a valid Spotify link");
                             return;
                         }
                         setSpotifyUrl(embed);

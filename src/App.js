@@ -161,7 +161,7 @@ export default function App() {
             const data = await api.listBooks(token);
             setBooks(Array.isArray(data) ? data : []);
         } catch (e) {
-            alert(e.message || "Error al listar los libros");
+            alert(e.message || "Error listing books");
             setBooks([]);
         }
     };
@@ -176,7 +176,7 @@ export default function App() {
             const data = await api.searchOpenLibrary(q); // ahora también búsqueda por autor e ISBN
             setResults(data.docs || []);
         } catch (e) {
-            alert("Error buscando libros");
+            alert("Error searching books");
         } finally {
             setSearching(false);
         }
@@ -217,23 +217,23 @@ export default function App() {
             setNewShelfName("");
             listarShelves(); // refrescamos la lista desde db
         } catch (e) {
-            alert(e.message || "Error al crear shelf");
+            alert(e.message || "Error creating shelf");
         }
     };
     const borrarShelf = async (shelf) => {
         if (!shelf?.id || typeof shelf.id !== "string" || shelf.id.length !== 24) {
-            alert("No se pudo eliminar: falta el id de la shelf (revisa listarShelves).");
+            alert("Could not delete: missing shelf (check listarShelves).");
             return;
         }
 
-        if (!window.confirm(`¿Eliminar la shelf "${shelf.name}"?`)) return;
+        if (!window.confirm(`Delete shelf "${shelf.name}"?`)) return;
 
         try {
             const token = await auth.currentUser.getIdToken();
             await api.deleteShelf(token, shelf.id);
             listarShelves();
         } catch (e) {
-            alert(e.message || "Error al eliminar shelf");
+            alert(e.message || "Error deleting shelf");
         }
     };
 
@@ -247,13 +247,13 @@ export default function App() {
             setSelectedBook((prev) => (prev && prev.id === id ? { ...prev, status } : prev));
             listarLibros();
         } catch (e) {
-            alert(e.message || "Error al cambiar estado");
+            alert(e.message || "Error changing status");
         }
     };
 
     // borrar un libro (DELETE /api/books/:id)
     const borrarLibro = async (id) => {
-        const ok = window.confirm("¿Seguro que quieres borrar este libro?");
+        const ok = window.confirm("Are you sure you want to delete this book?");
         if (!ok) return;
 
         try {
@@ -263,7 +263,7 @@ export default function App() {
             setSelectedBook((prev) => (prev && prev.id === id ? null : prev));
             listarLibros();
         } catch (e) {
-            alert(e.message || "Error al borrar el libro");
+            alert(e.message || "Error deleting book");
         }
     };
 
@@ -274,7 +274,7 @@ export default function App() {
             const data = await api.listNotes(token, bookId);
             setNotes(Array.isArray(data) ? data : []);
         } catch (e) {
-            alert(e.message || "Error al cargar notas");
+            alert(e.message || "Error loading notes");
             setNotes([]);
         } finally {
             setNotesLoading(false);
@@ -283,7 +283,7 @@ export default function App() {
 
     const crearNota = async (bookId) => {
         const text = noteText.trim();
-        if (!text) return alert("Escribe una nota primero");
+        if (!text) return alert("Write a note first");
 
         try {
             const token = await auth.currentUser.getIdToken();
@@ -300,12 +300,12 @@ export default function App() {
             setNoteMood("");
             cargarNotas(bookId); // recargar notas
         } catch (e) {
-            alert(e.message || "Error al guardar la nota");
+            alert(e.message || "Error saving note");
         }
     };
     const borrarNota = async (noteId) => {
-        console.log("Intentando borrar nota:", noteId);
-        const ok = window.confirm("¿Seguro que quieres borrar esta nota?");
+        console.log("Trying to delete note:", noteId);
+        const ok = window.confirm("Are you sure you want to delete this note?");
         if (!ok) return;
 
         try {
@@ -314,7 +314,7 @@ export default function App() {
 
             if (selectedBook && !selectedBook._discoverPreview) cargarNotas(selectedBook.id);
         } catch (e) {
-            alert(e.message || "Error al borrar la nota");
+            alert(e.message || "Error deleting note");
         }
     };
 
@@ -336,7 +336,7 @@ export default function App() {
 
     const guardarEdicionNota = async (noteId) => {
         const text = editText.trim();
-        if (!text) return alert("El texto no puede estar vacío");
+        if (!text) return alert("Text cannot be empty");
 
         try {
             const token = await auth.currentUser.getIdToken();
@@ -350,7 +350,7 @@ export default function App() {
             if (selectedBook && !selectedBook._discoverPreview) await cargarNotas(selectedBook.id);
             cancelarEditarNota();
         } catch (e) {
-            alert(e.message || "Error al editar la nota");
+            alert(e.message || "Error deleting note");
         }
     };
     // book of the day
@@ -390,7 +390,7 @@ export default function App() {
             setReviewIsPublic(!!data.isPublic);
             setReviewIsAnonymous(data.isAnonymous !== false);
         } catch (e) {
-            alert(e.message || "Error al cargar reseña");
+            alert(e.message || "Error loading review");
         } finally {
             setReviewLoading(false);
         }
@@ -398,7 +398,7 @@ export default function App() {
     // guardar reseña (PUT /api/books/:bookId/review)
     const guardarReview = async (bookId, overrides = {}) => {
         const text = reviewText.trim();
-        if (!text) return alert("Escribe una reseña primero");
+        if (!text) return alert("Write a review first");
 
         try {
             const token = await auth.currentUser.getIdToken();
@@ -418,9 +418,9 @@ export default function App() {
             setReviewIsAnonymous(data.isAnonymous !== false);
             setReviewRating(data.rating ? Number(data.rating) : reviewRating);
 
-            alert(overrides.isPublic ? "Reseña publicada" : "Reseña guardada");
+            alert(overrides.isPublic ? "Review published" : "Review saved");
         } catch (e) {
-            alert(e.message || "Error al guardar reseña");
+            alert(e.message || "Error saving review");
         }
     };
 
@@ -440,7 +440,7 @@ export default function App() {
             const data = await api.getPublicReviews(bookId);
             setPublicReviews(Array.isArray(data) ? data : []);
         } catch (e) {
-            alert(e.message || "Error al cargar reseñas públicas");
+            alert(e.message || "Error loading public reviews");
             setPublicReviews([]);
         } finally {
             setPublicReviewsLoading(false);
@@ -461,12 +461,10 @@ export default function App() {
 
             setCustomShelves(normalized);
         } catch (e) {
-            alert(e.message || "Error listando shelves");
+            alert(e.message || "Error listing shelves");
             setCustomShelves([]);
         }
     };
-
-
 
     // cambiar shelf (PATCH /api/books/:id)
     const cambiarShelf = async (id, shelf) => {
@@ -477,7 +475,7 @@ export default function App() {
             setSelectedBook((prev) => (prev && prev.id === id ? { ...prev, shelf } : prev));
             listarLibros();
         } catch (e) {
-            alert(e.message || "Error al cambiar shelf");
+            alert(e.message || "Error changing shelf");
         }
     };
 
@@ -493,7 +491,7 @@ export default function App() {
 
             listarLibros();
         } catch (e) {
-            alert(e.message || "Error al actualizar shelves del libro");
+            alert(e.message || "Error updating book shelves");
         }
     };
 
@@ -592,7 +590,7 @@ export default function App() {
 
             listarLibros();
         } catch (e) {
-            alert(e.message || "Error al añadir el libro");
+            alert(e.message || "Error adding the book");
         }
     };
 
@@ -667,7 +665,7 @@ export default function App() {
                 setSelectedBook(added);
             }
         } catch (e) {
-            alert(e.message || "Error al añadir el libro");
+            alert(e.message || "Error adding the book");
         }
     };
 
