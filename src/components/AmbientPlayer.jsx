@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { showAlert } from "../components/GlobalModal";
 
 export default function AmbientPlayer({
                                           styles,
@@ -388,7 +389,7 @@ export default function AmbientPlayer({
                     onClick={() => {
                         const embed = extractSpotifyEmbedUrl(spotifyInput);
                         if (!embed) {
-                            alert("Enter a valid Spotify link");
+                            showAlert("Enter a valid Spotify link");
                             return;
                         }
                         setSpotifyUrl(embed);

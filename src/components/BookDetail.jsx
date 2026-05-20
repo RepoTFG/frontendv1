@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { api } from "../services/api";
-
+import { showAlert } from "../components/GlobalModal";
 export default function BookDetail({
                                        user,
                                        book,
@@ -324,7 +324,7 @@ export default function BookDetail({
             }
             setRereadOpen(false);
         } catch (e) {
-            alert(e.message || "Error saving rereads");
+            showAlert(e.message || "Error saving rereads");
         }
     };
 

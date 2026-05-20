@@ -12,6 +12,7 @@ import AuthPage from "./AuthPage"; // login
 import BookDetail from "./components/BookDetail";
 import TopBar from "./components/TopBar";
 import BottomNav from "./components/BottomNav";
+import GlobalModal, { showAlert, showConfirm } from "./components/GlobalModal";
 
 // services:
 // importo las llamadas al backend
@@ -27,30 +28,26 @@ import Room from "./screens/Room";
 import SplashScreen from "./components/SplashScreen";
 
 export default function App() {
-    const [user, setUser] = useState(null); // guardamos user autenticado
-    const [loading, setLoading] = useState(true); // controlar si aun estamos comprobando la sesión (T: cargando; F: sabemos si hay)
-    const [books, setBooks] = useState([]); // lista de libros usuario
-    const [query, setQuery] = useState(""); // texto que escribe el usuario
-    const [results, setResults] = useState([]);// resultados de la búsqueda
-    const [searching, setSearching] = useState(false); // para mostrar “buscando...”
-    const [selectedBook, setSelectedBook] = useState(null); // libro seleccionado (vista detalle)
-    // shelves personalizadas
+    const [user, setUser] = useState(null);
+    const [loading, setLoading] = useState(true);
+    const [books, setBooks] = useState([]);
+    const [query, setQuery] = useState("");
+    const [results, setResults] = useState([]);
+    const [searching, setSearching] = useState(false);
+    const [selectedBook, setSelectedBook] = useState(null);
     const [customShelves, setCustomShelves] = useState([]);
     const [newShelfName, setNewShelfName] = useState("");
-    //const [addShelfChoice, setAddShelfChoice] = useState("");
     const [addStatusByKey, setAddStatusByKey] = useState({});
 
-    // estados para notas
-    const [notes, setNotes] = useState([]); // notas del libro seleccionado
-    const [noteText, setNoteText] = useState("");  // texto de la nota
-    const [noteChapter, setNoteChapter] = useState(""); // capítulo/parte
-    const [noteQuote, setNoteQuote] = useState(""); // cita/frase
+    const [notes, setNotes] = useState([]);
+    const [noteText, setNoteText] = useState("");
+    const [noteChapter, setNoteChapter] = useState("");
+    const [noteQuote, setNoteQuote] = useState("");
     const [notesLoading, setNotesLoading] = useState(false);
-    const [editingNoteId, setEditingNoteId] = useState(null); // id de nota en edición
-    const [editText, setEditText] = useState(""); // texto editado
-    const [editChapter, setEditChapter] = useState(""); // capítulo editado
-    const [editQuote, setEditQuote] = useState(""); // cita editada
-    // estados para review
+    const [editingNoteId, setEditingNoteId] = useState(null);
+    const [editText, setEditText] = useState("");
+    const [editChapter, setEditChapter] = useState("");
+    const [editQuote, setEditQuote] = useState("");
     const [reviewText, setReviewText] = useState("");
     const [reviewRating, setReviewRating] = useState(5);
     const [reviewIsPublic, setReviewIsPublic] = useState(false);
@@ -60,29 +57,24 @@ export default function App() {
     const [publicReviewsLoading, setPublicReviewsLoading] = useState(false);
     const [myReview, setMyReview] = useState(null);
 
-    const [activeTab, setActiveTab] = useState("home"); // home | library | diary | discover | room
-    // mood:
-    // mood de la nueva nota (opcional)
+    const [activeTab, setActiveTab] = useState("home");
     const [noteMood, setNoteMood] = useState("");
-    // mood al editar una nota
     const [editMood, setEditMood] = useState("");
-    // book of the Day
     const [bookOfDay, setBookOfDay] = useState(null);
     const [bookOfDayLoading, setBookOfDayLoading] = useState(false);
-    // definimos colores
+
     const ACCENT = "#2F2A24";
     const SOFT = "#F6F3EF";
     const CARD = "#FFFFFF";
     const BORDER = "#E9E4DE";
     const MUTED = "rgba(47,42,36,0.60)";
 
-    // contenido principal de la página
     const pageWrap = {
         background: "#FBFAF8",
         minHeight: "100vh",
-        paddingBottom: 92, // espacio para bottom nav
+        paddingBottom: 92,
     };
-    // contenido centrado
+
     const container = {
         padding: 16,
         maxWidth: 520,
@@ -133,7 +125,6 @@ export default function App() {
         fontSize: 12,
     };
 
-    // hago objeto styles para luego usarlo en components
     const styles = {
         ACCENT,
         SOFT,
@@ -144,58 +135,41 @@ export default function App() {
         smallGhostBtn
     };
 
-    // probar /api/me (manda token al backend)
-    //const probarMe = async () => {
-    //    try {
-    //        const token = await auth.currentUser.getIdToken();
-    //        const data = await api.me(token);
-    //        alert(`UID: ${data.uid}\nEmail: ${data.email}`);
-    //        alert(e.message || "Error al comprobar el usuario");
-    //    }
-    //};
-
-    // listar libros (GET /api/books)
     const listarLibros = async () => {
         try {
             const token = await auth.currentUser.getIdToken();
             const data = await api.listBooks(token);
             setBooks(Array.isArray(data) ? data : []);
         } catch (e) {
-            alert(e.message || "Error listing books");
+            showAlert(e.message || "Error listing books");
             setBooks([]);
         }
     };
 
-    // búsqueda de libros mediante Open Library (API)
     const buscarLibros = async () => {
         const q = query.trim();
         if (!q) return;
 
         setSearching(true);
         try {
-            const data = await api.searchOpenLibrary(q); // ahora también búsqueda por autor e ISBN
+            const data = await api.searchOpenLibrary(q);
             setResults(data.docs || []);
         } catch (e) {
-            alert("Error searching books");
+            showAlert("Error searching books");
         } finally {
             setSearching(false);
         }
     };
 
-
-    // separar libros por "shelves" (status)
     const wantToRead = (Array.isArray(books) ? books : []).filter((b) => b.status === "to_read");
     const currentlyReading = (Array.isArray(books) ? books : []).filter((b) => b.status === "reading");
     const interrupted = (Array.isArray(books) ? books : []).filter((b) => b.status === "paused");
     const finished = (Array.isArray(books) ? books : []).filter((b) => b.status === "finished");
-    // shelf personalizada
-    // ahora en vez de customShelves asumir que son strings --> ahora objetos
-    // shelf personalizada
+
     const customShelfNames = (Array.isArray(customShelves) ? customShelves : []).map((s) =>
         typeof s === "string" ? s : s.name
     );
 
-    // shelf personalizada
     const customSections = customShelfNames.map((name) => ({
         name,
         items: (Array.isArray(books) ? books : []).filter(
@@ -203,8 +177,6 @@ export default function App() {
         ),
     }));
 
-
-    // crear shelf personalizada --> usado en botón onClick "+ Crear"
     const crearShelf = async () => {
         const name = newShelfName.trim();
         if (!name) return;
@@ -215,45 +187,42 @@ export default function App() {
             await api.createShelf(token, { name });
 
             setNewShelfName("");
-            listarShelves(); // refrescamos la lista desde db
+            listarShelves();
         } catch (e) {
-            alert(e.message || "Error creating shelf");
+            showAlert(e.message || "Error creating shelf");
         }
     };
+
     const borrarShelf = async (shelf) => {
         if (!shelf?.id || typeof shelf.id !== "string" || shelf.id.length !== 24) {
-            alert("Could not delete: missing shelf (check listarShelves).");
+            showAlert("Could not delete: missing shelf (check listarShelves).");
             return;
         }
 
-        if (!window.confirm(`Delete shelf "${shelf.name}"?`)) return;
+        if (!(await showConfirm(`Delete shelf "${shelf.name}"?`))) return;
 
         try {
             const token = await auth.currentUser.getIdToken();
             await api.deleteShelf(token, shelf.id);
             listarShelves();
         } catch (e) {
-            alert(e.message || "Error deleting shelf");
+            showAlert(e.message || "Error deleting shelf");
         }
     };
 
-
-    // cambiar estado libro (PATCH /api/books/:id)
     const cambiarEstado = async (id, status) => {
         try {
             const token = await auth.currentUser.getIdToken();
             await api.patchBook(token, id, { status });
-            // actualiza el libro seleccionado si coincide
             setSelectedBook((prev) => (prev && prev.id === id ? { ...prev, status } : prev));
             listarLibros();
         } catch (e) {
-            alert(e.message || "Error changing status");
+            showAlert(e.message || "Error changing status");
         }
     };
 
-    // borrar un libro (DELETE /api/books/:id)
     const borrarLibro = async (id) => {
-        const ok = window.confirm("Are you sure you want to delete this book?");
+        const ok = await showConfirm("Are you sure you want to delete this book?");
         if (!ok) return;
 
         try {
@@ -263,7 +232,7 @@ export default function App() {
             setSelectedBook((prev) => (prev && prev.id === id ? null : prev));
             listarLibros();
         } catch (e) {
-            alert(e.message || "Error deleting book");
+            showAlert(e.message || "Error deleting book");
         }
     };
 
@@ -274,7 +243,7 @@ export default function App() {
             const data = await api.listNotes(token, bookId);
             setNotes(Array.isArray(data) ? data : []);
         } catch (e) {
-            alert(e.message || "Error loading notes");
+            showAlert(e.message || "Error loading notes");
             setNotes([]);
         } finally {
             setNotesLoading(false);
@@ -283,7 +252,7 @@ export default function App() {
 
     const crearNota = async (bookId) => {
         const text = noteText.trim();
-        if (!text) return alert("Write a note first");
+        if (!text) return showAlert("Write a note first");
 
         try {
             const token = await auth.currentUser.getIdToken();
@@ -293,19 +262,19 @@ export default function App() {
                 quote: noteQuote.trim(),
                 mood: noteMood || "",
             });
-            // limpiar form
             setNoteText("");
             setNoteChapter("");
             setNoteQuote("");
             setNoteMood("");
-            cargarNotas(bookId); // recargar notas
+            cargarNotas(bookId);
         } catch (e) {
-            alert(e.message || "Error saving note");
+            showAlert(e.message || "Error saving note");
         }
     };
+
     const borrarNota = async (noteId) => {
         console.log("Trying to delete note:", noteId);
-        const ok = window.confirm("Are you sure you want to delete this note?");
+        const ok = await showConfirm("Are you sure you want to delete this note?");
         if (!ok) return;
 
         try {
@@ -314,7 +283,7 @@ export default function App() {
 
             if (selectedBook && !selectedBook._discoverPreview) cargarNotas(selectedBook.id);
         } catch (e) {
-            alert(e.message || "Error deleting note");
+            showAlert(e.message || "Error deleting note");
         }
     };
 
@@ -336,7 +305,7 @@ export default function App() {
 
     const guardarEdicionNota = async (noteId) => {
         const text = editText.trim();
-        if (!text) return alert("Text cannot be empty");
+        if (!text) return showAlert("Text cannot be empty");
 
         try {
             const token = await auth.currentUser.getIdToken();
@@ -346,29 +315,27 @@ export default function App() {
                 quote: editQuote.trim(),
                 mood: editMood || "",
             });
-            // refrescar y salir del modo edición
             if (selectedBook && !selectedBook._discoverPreview) await cargarNotas(selectedBook.id);
             cancelarEditarNota();
         } catch (e) {
-            alert(e.message || "Error deleting note");
+            showAlert(e.message || "Error deleting note");
         }
     };
-    // book of the day
+
     const cargarBookOfDay = async () => {
         try {
-            setBookOfDayLoading(true); // mostramos cargando
+            setBookOfDayLoading(true);
             const token = await auth.currentUser.getIdToken();
-            const data = await api.getBookOfDay(token); // obtenemos recomendación
+            const data = await api.getBookOfDay(token);
             console.log("book of day response:", data);
-            setBookOfDay(data); // guardamos libro para luego en discover mostrar título, autor y cover
+            setBookOfDay(data);
         } catch (e) {
             console.error(e);
         } finally {
             setBookOfDayLoading(false);
         }
     };
-    // review
-    // cargar reseña propia (GET /api/books/:bookId/review)
+
     const cargarReview = async (bookId) => {
         setReviewLoading(true);
         try {
@@ -390,15 +357,15 @@ export default function App() {
             setReviewIsPublic(!!data.isPublic);
             setReviewIsAnonymous(data.isAnonymous !== false);
         } catch (e) {
-            alert(e.message || "Error loading review");
+            showAlert(e.message || "Error loading review");
         } finally {
             setReviewLoading(false);
         }
     };
-    // guardar reseña (PUT /api/books/:bookId/review)
+
     const guardarReview = async (bookId, overrides = {}) => {
         const text = reviewText.trim();
-        if (!text) return alert("Write a review first");
+        if (!text) return showAlert("Write a review first");
 
         try {
             const token = await auth.currentUser.getIdToken();
@@ -418,9 +385,9 @@ export default function App() {
             setReviewIsAnonymous(data.isAnonymous !== false);
             setReviewRating(data.rating ? Number(data.rating) : reviewRating);
 
-            alert(overrides.isPublic ? "Review published" : "Review saved");
+            showAlert(overrides.isPublic ? "Review published" : "Review saved");
         } catch (e) {
-            alert(e.message || "Error saving review");
+            showAlert(e.message || "Error saving review");
         }
     };
 
@@ -433,27 +400,24 @@ export default function App() {
         }
     };
 
-    // cargar reseñas públicas (GET /api/reviews/public?bookId=...)
     const cargarResenasPublicas = async (bookId) => {
         setPublicReviewsLoading(true);
         try {
             const data = await api.getPublicReviews(bookId);
             setPublicReviews(Array.isArray(data) ? data : []);
         } catch (e) {
-            alert(e.message || "Error loading public reviews");
+            showAlert(e.message || "Error loading public reviews");
             setPublicReviews([]);
         } finally {
             setPublicReviewsLoading(false);
         }
     };
 
-    // shelves personalizadas (GET /api/shelves)
     const listarShelves = async () => {
         try {
             const token = await auth.currentUser.getIdToken();
             const data = await api.listShelves(token);
 
-            // ahora objeto (data) [{id, name, ...}]
             const normalized = (Array.isArray(data) ? data : []).map((s) => ({
                 id: s.id || s._id,
                 name: s.name,
@@ -461,25 +425,22 @@ export default function App() {
 
             setCustomShelves(normalized);
         } catch (e) {
-            alert(e.message || "Error listing shelves");
+            showAlert(e.message || "Error listing shelves");
             setCustomShelves([]);
         }
     };
 
-    // cambiar shelf (PATCH /api/books/:id)
     const cambiarShelf = async (id, shelf) => {
         try {
             const token = await auth.currentUser.getIdToken();
             await api.patchBook(token, id, { shelf });
-            // si elijo shelf, quito status --> por ello, lo dejo en to_read para no romper nada
             setSelectedBook((prev) => (prev && prev.id === id ? { ...prev, shelf } : prev));
             listarLibros();
         } catch (e) {
-            alert(e.message || "Error changing shelf");
+            showAlert(e.message || "Error changing shelf");
         }
     };
 
-    // toggle shelf en libro (POST /api/books/:bookId/shelves/toggle)
     const toggleBookShelf = async (bookId, shelfName) => {
         try {
             const token = await auth.currentUser.getIdToken();
@@ -491,22 +452,18 @@ export default function App() {
 
             listarLibros();
         } catch (e) {
-            alert(e.message || "Error updating book shelves");
+            showAlert(e.message || "Error updating book shelves");
         }
     };
 
-    // añadir resultado de búsqueda eligiendo en que shelf colocar
     const addFromResult = async (doc, { status, shelves } = {}) => {
         try {
             const token = await auth.currentUser.getIdToken();
 
-            // comprobamos si el libro ya existe en la biblioteca
-            // primero intentamos por openLibraryCoverId
             const existingByCover = doc.cover_i
                 ? books.find((b) => b?.cover?.openLibraryCoverId === doc.cover_i)
                 : null;
 
-            // fallback: título + autor
             const titleNormalized = (doc.title || "").trim().toLowerCase();
             const authorNormalized = (
                 (doc.author_name && doc.author_name[0]) ? doc.author_name[0] : ""
@@ -522,14 +479,11 @@ export default function App() {
 
             const existingBook = existingByCover || existingByText;
 
-            // si ya existe --> actualizamos, no crear duplicado
             if (existingBook) {
-                // si viene de status y es distinto --> actualizamos status
                 if (typeof status === "string" && existingBook.status !== status) {
                     await cambiarEstado(existingBook.id, status);
                 }
 
-                // si vienen de shelves --> añadirlas si no existen
                 if (Array.isArray(shelves) && shelves.length > 0) {
                     for (const s of shelves) {
                         const hasShelf =
@@ -542,12 +496,10 @@ export default function App() {
                     }
                 }
 
-                // refrescar biblioteca y salir
                 listarLibros();
                 return;
             }
 
-            // si no existe --> crear libro nuevo
             const title = doc.title || "Sin título";
             const author =
                 (doc.author_name && doc.author_name[0]) ? doc.author_name[0] : "";
@@ -556,22 +508,19 @@ export default function App() {
                 ? `https://covers.openlibrary.org/b/id/${doc.cover_i}-L.jpg`
                 : "";
 
-            // si se elige shelf personalizada y no viene status
             const finalStatus = typeof status === "string" ? status : "";
 
-            const work = await api.getOpenLibraryWork(doc.key); // doc.key tipo "/works/OLxxxxW"
-            // ahora genres vienen de work (API) no de doc.subject
+            const work = await api.getOpenLibraryWork(doc.key);
             const genresFromWork = Array.isArray(work?.subjects)
                 ? work.subjects.slice(0, 5)
                 : [];
 
-            // antes era fetch POST /api/books --> ahora api.createBook
             await api.createBook(token, {
                 title,
                 author,
                 status: finalStatus,
                 shelves: Array.isArray(shelves) ? shelves : [],
-                tags: ["biblioteca"], // como prueba de uso, luego se podría aplicar un uso útil
+                tags: ["biblioteca"],
                 genres: genresFromWork,
                 cover: {
                     source: "openlibrary",
@@ -590,11 +539,10 @@ export default function App() {
 
             listarLibros();
         } catch (e) {
-            alert(e.message || "Error adding the book");
+            showAlert(e.message || "Error adding the book");
         }
     };
 
-    // añadir libro desde preview de discover/reviews
     const addFromPreview = async (book, { status, shelves } = {}) => {
         try {
             const token = await auth.currentUser.getIdToken();
@@ -665,18 +613,18 @@ export default function App() {
                 setSelectedBook(added);
             }
         } catch (e) {
-            alert(e.message || "Error adding the book");
+            showAlert(e.message || "Error adding the book");
         }
     };
 
     useEffect(() => {
-        const start = Date.now(); // momento en que arranca la app
+        const start = Date.now();
 
         const unsub = onAuthStateChanged(auth, (u) => {
             setUser(u);
 
             const elapsed = Date.now() - start;
-            const MIN_TIME = 600; // tiempo mínimo de splash
+            const MIN_TIME = 600;
             const remaining = MIN_TIME - elapsed;
 
             if (remaining > 0) {
@@ -690,10 +638,9 @@ export default function App() {
     }, []);
 
     useEffect(() => {
-        // cuando ya hay usuario, cargamos libros automáticamente
         if (user) {
             listarLibros();
-            listarShelves(); // ahora también shelves personalizadas
+            listarShelves();
         }
     }, [user]);
 
@@ -705,7 +652,6 @@ export default function App() {
 
     useEffect(() => {
         if (selectedBook) {
-            // cuando se abre el detalle de un libro → cargar sus notas
             if (!selectedBook._discoverPreview) {
                 cargarNotas(selectedBook.id);
                 cargarReview(selectedBook.id);
@@ -722,12 +668,10 @@ export default function App() {
                 setPublicReviews([]);
             }
         } else {
-            // cuando se vuelve atrás → limpiar estado de notas
             setNotes([]);
             setNoteText("");
             setNoteChapter("");
             setNoteQuote("");
-            // ahora también review
             setMyReview(null);
             setReviewText("");
             setReviewRating(5);
@@ -745,180 +689,183 @@ export default function App() {
         return "Room";
     }, [activeTab]);
 
-    // if (loading) return <p>Cargando...</p>; // si aun comprobando sesión
     if (loading) {
         return <SplashScreen />;
     }
-    if (!user) return <AuthPage />; // no usuario logueado
+    if (!user) return <AuthPage />;
 
-    // si hay usuario logueado --> página
     if (selectedBook) {
         return (
-            <BookDetail
-                book={selectedBook}
-                user={user}
-                onBack={() => {
-                    setSelectedBook(null);
-                    cancelarEditarNota();
-                }}
-                cambiarEstado={cambiarEstado}
-                cambiarShelf={cambiarShelf}
-                customShelves={customShelfNames} //solo los nombres
-                borrarLibro={borrarLibro}
-                notes={notes}
-                notesLoading={notesLoading}
-                noteText={noteText}
-                setNoteText={setNoteText}
-                noteChapter={noteChapter}
-                setNoteChapter={setNoteChapter}
-                noteQuote={noteQuote}
-                setNoteQuote={setNoteQuote}
-                crearNota={crearNota}
-                borrarNota={borrarNota}
-                editingNoteId={editingNoteId}
-                editText={editText}
-                setEditText={setEditText}
-                editChapter={editChapter}
-                setEditChapter={setEditChapter}
-                editQuote={editQuote}
-                setEditQuote={setEditQuote}
-                empezarEditarNota={empezarEditarNota}
-                cancelarEditarNota={cancelarEditarNota}
-                guardarEdicionNota={guardarEdicionNota}
-                reviewText={reviewText}
-                setReviewText={setReviewText}
-                reviewRating={reviewRating}
-                setReviewRating={setReviewRating}
-                publicReviews={publicReviews}
-                publicReviewsLoading={publicReviewsLoading}
-                cargarResenasPublicas={cargarResenasPublicas}
-                guardarReview={guardarReview}
-                compartirReviewAnonima={compartirReviewAnonima}
-                reviewIsPublic={reviewIsPublic}
-                setReviewIsPublic={setReviewIsPublic}
-                setReviewIsAnonymous={setReviewIsAnonymous}
-                cargarReview={cargarReview}
-                myReview={myReview}
-                reviewLoading={reviewLoading}
-                toggleBookShelf={toggleBookShelf}
-                noteMood={noteMood}
-                setNoteMood={setNoteMood}
-                editMood={editMood}
-                setEditMood={setEditMood}
-                addFromPreview={addFromPreview}
-                // al volver atrás, contador de relecturas también actualizado:
-                onBookUpdated={(bookId, changes) => {
-                    setBooks((prev) =>
-                        prev.map((b) =>
-                            b.id === bookId ? { ...b, ...changes } : b // si encontramos libro correcto = crear uno con los cambios
-                        )
-                    );
-                    setSelectedBook((prev) =>
-                        prev && prev.id === bookId ? { ...prev, ...changes } : prev // actualizar vista libro
-                    );
-                }}
-            />
+            <>
+                <BookDetail
+                    book={selectedBook}
+                    user={user}
+                    onBack={() => {
+                        setSelectedBook(null);
+                        cancelarEditarNota();
+                    }}
+                    cambiarEstado={cambiarEstado}
+                    cambiarShelf={cambiarShelf}
+                    customShelves={customShelfNames}
+                    borrarLibro={borrarLibro}
+                    notes={notes}
+                    notesLoading={notesLoading}
+                    noteText={noteText}
+                    setNoteText={setNoteText}
+                    noteChapter={noteChapter}
+                    setNoteChapter={setNoteChapter}
+                    noteQuote={noteQuote}
+                    setNoteQuote={setNoteQuote}
+                    crearNota={crearNota}
+                    borrarNota={borrarNota}
+                    editingNoteId={editingNoteId}
+                    editText={editText}
+                    setEditText={setEditText}
+                    editChapter={editChapter}
+                    setEditChapter={setEditChapter}
+                    editQuote={editQuote}
+                    setEditQuote={setEditQuote}
+                    empezarEditarNota={empezarEditarNota}
+                    cancelarEditarNota={cancelarEditarNota}
+                    guardarEdicionNota={guardarEdicionNota}
+                    reviewText={reviewText}
+                    setReviewText={setReviewText}
+                    reviewRating={reviewRating}
+                    setReviewRating={setReviewRating}
+                    publicReviews={publicReviews}
+                    publicReviewsLoading={publicReviewsLoading}
+                    cargarResenasPublicas={cargarResenasPublicas}
+                    guardarReview={guardarReview}
+                    compartirReviewAnonima={compartirReviewAnonima}
+                    reviewIsPublic={reviewIsPublic}
+                    setReviewIsPublic={setReviewIsPublic}
+                    setReviewIsAnonymous={setReviewIsAnonymous}
+                    cargarReview={cargarReview}
+                    myReview={myReview}
+                    reviewLoading={reviewLoading}
+                    toggleBookShelf={toggleBookShelf}
+                    noteMood={noteMood}
+                    setNoteMood={setNoteMood}
+                    editMood={editMood}
+                    setEditMood={setEditMood}
+                    addFromPreview={addFromPreview}
+                    onBookUpdated={(bookId, changes) => {
+                        setBooks((prev) =>
+                            prev.map((b) =>
+                                b.id === bookId ? { ...b, ...changes } : b
+                            )
+                        );
+                        setSelectedBook((prev) =>
+                            prev && prev.id === bookId ? { ...prev, ...changes } : prev
+                        );
+                    }}
+                />
+                <GlobalModal />
+            </>
         );
     }
 
     return (
-        <div style={pageWrap}>
-            <TopBar
-                title={topBarTitle}
-                onLogout={() => signOut(auth)}
-                styles={styles}
-            />
+        <>
+            <div style={pageWrap}>
+                <TopBar
+                    title={topBarTitle}
+                    onLogout={() => signOut(auth)}
+                    styles={styles}
+                />
 
-            <div style={container}>
-                {activeTab === "home" && (
-                    <Home
-                        results={results}
-                        searching={searching}
-                        query={query}
-                        setQuery={setQuery}
-                        customShelves={customShelves}
-                        addStatusByKey={addStatusByKey}
-                        setAddStatusByKey={setAddStatusByKey}
-                        books={books}
-                        finished={finished}
-                        currentlyReading={currentlyReading}
-                        buscarLibros={buscarLibros}
-                        addFromResult={addFromResult}
-                        toggleBookShelf={toggleBookShelf}
-                        setSelectedBook={setSelectedBook}
-                        setActiveTab={setActiveTab}
-                        styles={styles}
-                        inputStyle={inputStyle}
-                        primaryBtn={primaryBtn}
-                        SOFT={SOFT}
-                        BORDER={BORDER}
-                        CARD={CARD}
-                        ACCENT={ACCENT}
-                        MUTED={MUTED}
-                    />
-                )}
-                {activeTab === "library" && (
-                    <Library
-                        currentlyReading={currentlyReading}
-                        wantToRead={wantToRead}
-                        interrupted={interrupted}
-                        finished={finished}
-                        customSections={customSections}
-                        setSelectedBook={setSelectedBook}
-                        styles={styles}
-                        customShelves={customShelves}
-                        borrarShelf={borrarShelf}
-                        newShelfName={newShelfName}
-                        setNewShelfName={setNewShelfName}
-                        crearShelf={crearShelf}
-                        inputStyle={inputStyle}
-                        primaryBtn={primaryBtn}
+                <div style={container}>
+                    {activeTab === "home" && (
+                        <Home
+                            results={results}
+                            searching={searching}
+                            query={query}
+                            setQuery={setQuery}
+                            customShelves={customShelves}
+                            addStatusByKey={addStatusByKey}
+                            setAddStatusByKey={setAddStatusByKey}
+                            books={books}
+                            finished={finished}
+                            currentlyReading={currentlyReading}
+                            buscarLibros={buscarLibros}
+                            addFromResult={addFromResult}
+                            toggleBookShelf={toggleBookShelf}
+                            setSelectedBook={setSelectedBook}
+                            setActiveTab={setActiveTab}
+                            styles={styles}
+                            inputStyle={inputStyle}
+                            primaryBtn={primaryBtn}
+                            SOFT={SOFT}
+                            BORDER={BORDER}
+                            CARD={CARD}
+                            ACCENT={ACCENT}
+                            MUTED={MUTED}
+                        />
+                    )}
+                    {activeTab === "library" && (
+                        <Library
+                            currentlyReading={currentlyReading}
+                            wantToRead={wantToRead}
+                            interrupted={interrupted}
+                            finished={finished}
+                            customSections={customSections}
+                            setSelectedBook={setSelectedBook}
+                            styles={styles}
+                            customShelves={customShelves}
+                            borrarShelf={borrarShelf}
+                            newShelfName={newShelfName}
+                            setNewShelfName={setNewShelfName}
+                            crearShelf={crearShelf}
+                            inputStyle={inputStyle}
+                            primaryBtn={primaryBtn}
 
-                    />
-                )}
+                        />
+                    )}
 
-                {activeTab === "diary" && (
-                    <Diary books={books} setSelectedBook={setSelectedBook} styles={styles} />
+                    {activeTab === "diary" && (
+                        <Diary books={books} setSelectedBook={setSelectedBook} styles={styles} />
 
-                )}
+                    )}
 
-                {activeTab === "discover" && (
-                    <Discover
-                        BORDER={BORDER}
-                        CARD={CARD}
-                        ACCENT={ACCENT}
-                        MUTED={MUTED}
-                        ghostBtn={ghostBtn}
-                        bookOfDay={bookOfDay}
-                        bookOfDayLoading={bookOfDayLoading}
-                        books={books}
-                        customShelves={customShelves}
-                        addFromResult={addFromResult}
-                        toggleBookShelf={toggleBookShelf}
-                        setSelectedBook={setSelectedBook}
-                    />
-                )}
+                    {activeTab === "discover" && (
+                        <Discover
+                            BORDER={BORDER}
+                            CARD={CARD}
+                            ACCENT={ACCENT}
+                            MUTED={MUTED}
+                            ghostBtn={ghostBtn}
+                            bookOfDay={bookOfDay}
+                            bookOfDayLoading={bookOfDayLoading}
+                            books={books}
+                            customShelves={customShelves}
+                            addFromResult={addFromResult}
+                            toggleBookShelf={toggleBookShelf}
+                            setSelectedBook={setSelectedBook}
+                        />
+                    )}
 
-                {activeTab === "room" && (
-                    <Room
-                        user={user}
-                        newShelfName={newShelfName}
-                        setNewShelfName={setNewShelfName}
-                        customShelves={customShelves}
-                        crearShelf={crearShelf}
-                        inputStyle={inputStyle}
-                        primaryBtn={primaryBtn}
-                        styles={styles}
-                    />
-                )}
+                    {activeTab === "room" && (
+                        <Room
+                            user={user}
+                            newShelfName={newShelfName}
+                            setNewShelfName={setNewShelfName}
+                            customShelves={customShelves}
+                            crearShelf={crearShelf}
+                            inputStyle={inputStyle}
+                            primaryBtn={primaryBtn}
+                            styles={styles}
+                        />
+                    )}
+                </div>
+
+                <BottomNav
+                    activeTab={activeTab}
+                    setActiveTab={setActiveTab}
+                    styles={styles}
+                />
             </div>
 
-
-            <BottomNav
-                activeTab={activeTab}
-                setActiveTab={setActiveTab}
-                styles={styles}
-            />
-        </div>
+            <GlobalModal />
+        </>
     );
 }

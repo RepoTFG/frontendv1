@@ -3,6 +3,7 @@ import { auth } from "../firebase";
 import { api } from "../services/api";
 import DiaryListView from "../components/DiaryListView";
 import AICompanionModal from "../components/AICompanionModal";
+import { showAlert, showConfirm } from "../components/GlobalModal";
 
 export default function Diary({ books, setSelectedBook, styles }) {
     const { ACCENT, SOFT, CARD, BORDER, MUTED } = styles;
@@ -82,7 +83,7 @@ export default function Diary({ books, setSelectedBook, styles }) {
             setNotes(Array.isArray(notesData) ? notesData : []);
             setReviews(Array.isArray(reviewsData) ? reviewsData : []);
         } catch (e) {
-            alert(e.message || "Error loading the Diary");
+            showAlert(e.message || "Error loading the Diary");
             setNotes([]);
             setReviews([]);
         } finally {
@@ -180,7 +181,7 @@ export default function Diary({ books, setSelectedBook, styles }) {
     const createEntry = async () => {
         try {
             if (!draftBookId) {
-                alert("Select a book before saving the entry.");
+                showAlert("Select a book before saving the entry.");
                 return;
             }
 
@@ -189,7 +190,7 @@ export default function Diary({ books, setSelectedBook, styles }) {
 
             if (newType === "note") {
                 if (!noteText.trim()) {
-                    alert("Write your note before saving.");
+                    showAlert("Write your note before saving.");
                     return;
                 }
 
@@ -211,7 +212,7 @@ export default function Diary({ books, setSelectedBook, styles }) {
 
             // crear review
             if (!reviewText.trim()) {
-                alert("Write your review before saving.");
+                showAlert("Write your review before saving.");
                 return;
             }
 
@@ -228,7 +229,7 @@ export default function Diary({ books, setSelectedBook, styles }) {
             setReviewIsPublic(false);
             await load();
         } catch (e) {
-            alert(e.message || "Error saving the entry");
+            showAlert(e.message || "Error saving the entry");
         } finally {
             setSaving(false);
         }
@@ -259,7 +260,7 @@ export default function Diary({ books, setSelectedBook, styles }) {
             if (!noteId) return;
 
             if (!editText.trim()) {
-                alert("Write your note before saving.");
+                showAlert("Write your note before saving.");
                 return;
             }
 
@@ -282,7 +283,7 @@ export default function Diary({ books, setSelectedBook, styles }) {
             cancelarEditarNota();
             await load();
         } catch (e) {
-            alert(e.message || "Error saving the edit");
+            showAlert(e.message || "Error saving the edit");
         }
     };
 
@@ -290,7 +291,7 @@ export default function Diary({ books, setSelectedBook, styles }) {
         try {
             if (!noteId) return;
 
-            const ok = window.confirm("Are you sure you want to delete this note?");
+            const ok = await showConfirm("Are you sure you want to delete this note?");
             if (!ok) return;
 
             const token = await auth.currentUser.getIdToken();
@@ -304,7 +305,7 @@ export default function Diary({ books, setSelectedBook, styles }) {
 
             await load();
         } catch (e) {
-            alert(e.message || "Error deleting the note");
+            showAlert(e.message || "Error deleting the note");
         }
     };
 
@@ -321,7 +322,7 @@ export default function Diary({ books, setSelectedBook, styles }) {
                 await load();
             }
         } catch (e) {
-            alert(e.message || "Error generating the reflection");
+            showAlert(e.message || "Error generating the reflection");
         } finally {
             setAiLoadingId(null);
         }
@@ -374,7 +375,7 @@ export default function Diary({ books, setSelectedBook, styles }) {
 
             await load();
         } catch (e) {
-            alert(e.message || "Error saving the reflections");
+            showAlert(e.message || "Error saving the reflections");
         } finally {
             setSavingAnswersId(null);
         }

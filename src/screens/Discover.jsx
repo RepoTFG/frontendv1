@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { auth } from "../firebase";
 import { api } from "../services/api";
+import { showAlert } from "../components/GlobalModal";
 
 export default function Discover({
                                    BORDER,
@@ -194,7 +195,7 @@ export default function Discover({
       await api.sendBookOfDayAIFeedback(token, value);
       setBookOfDayAIFeedback(value);
     } catch (e) {
-      alert(e.message || "Error saving AI feedback");
+      showAlert(e.message || "Error saving AI feedback");
     } finally {
       setBookOfDayAIFeedbackLoading(false);
     }
