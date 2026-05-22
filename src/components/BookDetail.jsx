@@ -1105,7 +1105,7 @@ export default function BookDetail({
                             background: "rgba(0,0,0,0.35)",
                             display: "flex",
                             justifyContent: "center",
-                            alignItems: "flex-end",
+                            alignItems: "center", // modal centrado con espacio tanto arriba como abajo
                             padding: 16,
                             zIndex: 50,
                         }}
@@ -1115,6 +1115,8 @@ export default function BookDetail({
                             style={{
                                 width: "100%",
                                 maxWidth: 520,
+                                maxHeight: "80vh", // para que el texto no se corte cuando es muy largo
+                                overflowY: "auto", // para que el texto no se corte cuando es muy largo
                                 borderRadius: 18,
                                 border: `1px solid ${BORDER}`,
                                 background: CARD,
@@ -1179,7 +1181,7 @@ export default function BookDetail({
                         background: "rgba(0,0,0,0.35)",
                         display: "flex",
                         justifyContent: "center",
-                        alignItems: "flex-end",
+                        alignItems: "flex-end", // modal anclado abajo
                         padding: 16,
                         zIndex: 60,
                     }}
