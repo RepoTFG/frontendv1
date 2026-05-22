@@ -65,7 +65,7 @@ export default function DiaryListView({
 
     // separar notas y citas
     const notesOnly = useMemo(
-        () => notes.filter((n) => !(typeof n.quote === "string" && n.quote.trim())),
+        () => notes,
         [notes]
     );
     const quotesOnly = useMemo(

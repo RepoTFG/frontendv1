@@ -408,7 +408,7 @@ export default function Diary({ books, setSelectedBook, styles }) {
 
     // separar notas y citas
     const notesOnly = useMemo(
-        () => notes.filter((n) => !(typeof n.quote === "string" && n.quote.trim())),
+        () => notes,
         [notes]
     );
     const quotesOnly = useMemo(

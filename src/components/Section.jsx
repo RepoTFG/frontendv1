@@ -20,7 +20,7 @@ export default function Section({ title, items, onPick, styles }) {
 
             {/* si no hay libros --> mostramos texto */}
             {items.length === 0 ? (
-                <p style={{ opacity: 0.7, marginTop: 10 }}>No hay libros aquí todavía</p>
+                <p style={{ opacity: 0.7, marginTop: 10 }}>There are no books here yet</p>
             ) : (
                 // grid con portadas (solo portada + texto, sin select/botones)
                 <div
