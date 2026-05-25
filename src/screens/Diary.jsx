@@ -236,7 +236,7 @@ export default function Diary({ books, setSelectedBook, styles }) {
     };
 
     // modal edición
-    const empezarEditarNota = (n) => {
+    const startEditingNote = (n) => {
         setEditingNoteId(n.id);
         setEditText(n.text || "");
         setEditChapter(n.chapter || "");
@@ -246,7 +246,7 @@ export default function Diary({ books, setSelectedBook, styles }) {
     };
 
     // cerrar y limpiar modal edición
-    const cancelarEditarNota = () => {
+    const cancelEditNote = () => {
         setEditingNoteId(null);
         setEditText("");
         setEditChapter("");
@@ -255,7 +255,7 @@ export default function Diary({ books, setSelectedBook, styles }) {
         setEditOpen(false);
     };
 
-    const guardarEdicionNota = async (noteId) => {
+    const saveNoteEdit = async (noteId) => {
         try {
             if (!noteId) return;
 
@@ -280,14 +280,14 @@ export default function Diary({ books, setSelectedBook, styles }) {
                 return next;
             });
 
-            cancelarEditarNota();
+            cancelEditNote();
             await load();
         } catch (e) {
             showAlert(e.message || "Error saving the edit");
         }
     };
 
-    const borrarNota = async (noteId) => {
+    const deleteNote = async (noteId) => {
         try {
             if (!noteId) return;
 
@@ -813,8 +813,8 @@ export default function Diary({ books, setSelectedBook, styles }) {
                     notes={notes}
                     reviews={reviews}
                     openBook={openBook}
-                    empezarEditarNota={empezarEditarNota}
-                    borrarNota={borrarNota}
+                    startEditingNote={startEditingNote}
+                    deleteNote={deleteNote}
                     moodLabel={moodLabel}
                     getPreviewText={getPreviewText}
                 />
@@ -1030,7 +1030,7 @@ export default function Diary({ books, setSelectedBook, styles }) {
             {/* modal editar nota */}
             {editOpen && (
                 <div
-                    onClick={cancelarEditarNota}
+                    onClick={cancelEditNote}
                     style={{
                         position: "fixed",
                         inset: 0,
@@ -1055,7 +1055,7 @@ export default function Diary({ books, setSelectedBook, styles }) {
                     >
                         <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "center" }}>
                             <div style={{ fontWeight: 900, color: ACCENT }}>Edit note</div>
-                            <button onClick={cancelarEditarNota} style={{ ...ghostBtn, width: "auto" }} type="button">
+                            <button onClick={cancelEditNote} style={{ ...ghostBtn, width: "auto" }} type="button">
                                 Close
                             </button>
                         </div>
@@ -1103,7 +1103,7 @@ export default function Diary({ books, setSelectedBook, styles }) {
 
                             <div style={{ display: "flex", gap: 8 }}>
                                 <button
-                                    onClick={() => guardarEdicionNota(editingNoteId)}
+                                    onClick={() => saveNoteEdit(editingNoteId)}
                                     style={{
                                         ...primaryBtn,
                                         width: "auto",
@@ -1114,7 +1114,7 @@ export default function Diary({ books, setSelectedBook, styles }) {
                                     Save changes
                                 </button>
                                 <button
-                                    onClick={cancelarEditarNota}
+                                    onClick={cancelEditNote}
                                     style={{
                                         ...ghostBtn,
                                         width: "auto",

@@ -16,7 +16,7 @@ export default function Home({
                                  currentlyReading,
 
                                  // actions
-                                 buscarLibros,
+                                 searchBooks,
                                  addFromResult,
                                  toggleBookShelf,
                                  setSelectedBook,
@@ -63,14 +63,14 @@ export default function Home({
         debounceRef.current = setTimeout(() => {
             if (lastQueryRef.current === q) return;
             lastQueryRef.current = q;
-            buscarLibros();
+            searchBooks();
             setResultsOpen(true);
         }, 350);
 
         return () => {
             if (debounceRef.current) clearTimeout(debounceRef.current);
         };
-    }, [query, buscarLibros]);
+    }, [query, searchBooks]);
 
     const homeCard = {
         border: `1px solid ${BORDER}`,
@@ -138,7 +138,7 @@ export default function Home({
                     />
                     <button
                         onClick={() => {
-                            buscarLibros();
+                            searchBooks();
                             setResultsOpen(true);
                         }}
                         style={primaryBtn}

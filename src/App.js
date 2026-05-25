@@ -135,7 +135,7 @@ export default function App() {
         smallGhostBtn
     };
 
-    const listarLibros = async () => {
+    const listBooks = async () => {
         try {
             const token = await auth.currentUser.getIdToken();
             const data = await api.listBooks(token);
@@ -146,7 +146,7 @@ export default function App() {
         }
     };
 
-    const buscarLibros = async () => {
+    const searchBooks = async () => {
         const q = query.trim();
         if (!q) return;
 
@@ -177,7 +177,7 @@ export default function App() {
         ),
     }));
 
-    const crearShelf = async () => {
+    const createShelf = async () => {
         const name = newShelfName.trim();
         if (!name) return;
 
@@ -187,15 +187,15 @@ export default function App() {
             await api.createShelf(token, { name });
 
             setNewShelfName("");
-            listarShelves();
+            listShelves();
         } catch (e) {
             showAlert(e.message || "Error creating shelf");
         }
     };
 
-    const borrarShelf = async (shelf) => {
+    const deleteShelf = async (shelf) => {
         if (!shelf?.id || typeof shelf.id !== "string" || shelf.id.length !== 24) {
-            showAlert("Could not delete: missing shelf (check listarShelves).");
+            showAlert("Could not delete: missing shelf (check listShelves).");
             return;
         }
 
@@ -204,24 +204,24 @@ export default function App() {
         try {
             const token = await auth.currentUser.getIdToken();
             await api.deleteShelf(token, shelf.id);
-            listarShelves();
+            listShelves();
         } catch (e) {
             showAlert(e.message || "Error deleting shelf");
         }
     };
 
-    const cambiarEstado = async (id, status) => {
+    const changeStatus = async (id, status) => {
         try {
             const token = await auth.currentUser.getIdToken();
             await api.patchBook(token, id, { status });
             setSelectedBook((prev) => (prev && prev.id === id ? { ...prev, status } : prev));
-            listarLibros();
+            listBooks();
         } catch (e) {
             showAlert(e.message || "Error changing status");
         }
     };
 
-    const borrarLibro = async (id) => {
+    const deleteBook = async (id) => {
         const ok = await showConfirm("Are you sure you want to delete this book?");
         if (!ok) return;
 
@@ -230,13 +230,13 @@ export default function App() {
             await api.deleteBook(token, id);
 
             setSelectedBook((prev) => (prev && prev.id === id ? null : prev));
-            listarLibros();
+            listBooks();
         } catch (e) {
             showAlert(e.message || "Error deleting book");
         }
     };
 
-    const cargarNotas = async (bookId) => {
+    const loadNotes = async (bookId) => {
         setNotesLoading(true);
         try {
             const token = await auth.currentUser.getIdToken();
@@ -250,7 +250,7 @@ export default function App() {
         }
     };
 
-    const crearNota = async (bookId) => {
+    const createNote = async (bookId) => {
         const text = noteText.trim();
         if (!text) return showAlert("Write a note first");
 
@@ -266,13 +266,13 @@ export default function App() {
             setNoteChapter("");
             setNoteQuote("");
             setNoteMood("");
-            cargarNotas(bookId);
+            loadNotes(bookId);
         } catch (e) {
             showAlert(e.message || "Error saving note");
         }
     };
 
-    const borrarNota = async (noteId) => {
+    const deleteNote = async (noteId) => {
         console.log("Trying to delete note:", noteId);
         const ok = await showConfirm("Are you sure you want to delete this note?");
         if (!ok) return;
@@ -281,13 +281,13 @@ export default function App() {
             const token = await auth.currentUser.getIdToken();
             await api.deleteNote(token, noteId);
 
-            if (selectedBook && !selectedBook._discoverPreview) cargarNotas(selectedBook.id);
+            if (selectedBook && !selectedBook._discoverPreview) loadNotes(selectedBook.id);
         } catch (e) {
             showAlert(e.message || "Error deleting note");
         }
     };
 
-    const empezarEditarNota = (note) => {
+    const startEditingNote = (note) => {
         setEditingNoteId(note.id);
         setEditText(note.text || "");
         setEditChapter(note.chapter || "");
@@ -295,7 +295,7 @@ export default function App() {
         setEditMood(note.mood || "");
     };
 
-    const cancelarEditarNota = () => {
+    const cancelEditNote = () => {
         setEditingNoteId(null);
         setEditText("");
         setEditChapter("");
@@ -303,7 +303,7 @@ export default function App() {
         setEditMood("");
     };
 
-    const guardarEdicionNota = async (noteId) => {
+    const saveNoteEdit = async (noteId) => {
         const text = editText.trim();
         if (!text) return showAlert("Text cannot be empty");
 
@@ -315,14 +315,14 @@ export default function App() {
                 quote: editQuote.trim(),
                 mood: editMood || "",
             });
-            if (selectedBook && !selectedBook._discoverPreview) await cargarNotas(selectedBook.id);
-            cancelarEditarNota();
+            if (selectedBook && !selectedBook._discoverPreview) await loadNotes(selectedBook.id);
+            cancelEditNote();
         } catch (e) {
             showAlert(e.message || "Error deleting note");
         }
     };
 
-    const cargarBookOfDay = async () => {
+    const loadBookOfDay = async () => {
         try {
             setBookOfDayLoading(true);
             const token = await auth.currentUser.getIdToken();
@@ -336,7 +336,7 @@ export default function App() {
         }
     };
 
-    const cargarReview = async (bookId) => {
+    const loadReview = async (bookId) => {
         setReviewLoading(true);
         try {
             const token = await auth.currentUser.getIdToken();
@@ -363,7 +363,7 @@ export default function App() {
         }
     };
 
-    const guardarReview = async (bookId, overrides = {}) => {
+    const saveReview = async (bookId, overrides = {}) => {
         const text = reviewText.trim();
         if (!text) return showAlert("Write a review first");
 
@@ -391,16 +391,16 @@ export default function App() {
         }
     };
 
-    const compartirReviewAnonima = async (bookId) => {
+    const shareAnonymousReview = async (bookId) => {
         setReviewLoading(true);
         try {
-            await guardarReview(bookId, { isPublic: true, isAnonymous: true });
+            await saveReview(bookId, { isPublic: true, isAnonymous: true });
         } finally {
             setReviewLoading(false);
         }
     };
 
-    const cargarResenasPublicas = async (bookId) => {
+    const loadPublicReviews = async (bookId) => {
         setPublicReviewsLoading(true);
         try {
             const data = await api.getPublicReviews(bookId);
@@ -413,7 +413,7 @@ export default function App() {
         }
     };
 
-    const listarShelves = async () => {
+    const listShelves = async () => {
         try {
             const token = await auth.currentUser.getIdToken();
             const data = await api.listShelves(token);
@@ -430,12 +430,12 @@ export default function App() {
         }
     };
 
-    const cambiarShelf = async (id, shelf) => {
+    const changeShelf = async (id, shelf) => {
         try {
             const token = await auth.currentUser.getIdToken();
             await api.patchBook(token, id, { shelf });
             setSelectedBook((prev) => (prev && prev.id === id ? { ...prev, shelf } : prev));
-            listarLibros();
+            listBooks();
         } catch (e) {
             showAlert(e.message || "Error changing shelf");
         }
@@ -450,7 +450,7 @@ export default function App() {
                 setSelectedBook((prev) => (prev && prev.id === bookId ? { ...prev, ...data } : prev));
             }
 
-            listarLibros();
+            listBooks();
         } catch (e) {
             showAlert(e.message || "Error updating book shelves");
         }
@@ -481,7 +481,7 @@ export default function App() {
 
             if (existingBook) {
                 if (typeof status === "string" && existingBook.status !== status) {
-                    await cambiarEstado(existingBook.id, status);
+                    await changeStatus(existingBook.id, status);
                 }
 
                 if (Array.isArray(shelves) && shelves.length > 0) {
@@ -496,7 +496,7 @@ export default function App() {
                     }
                 }
 
-                listarLibros();
+                listBooks();
                 return;
             }
 
@@ -537,7 +537,7 @@ export default function App() {
 
             });
 
-            listarLibros();
+            listBooks();
         } catch (e) {
             showAlert(e.message || "Error adding the book");
         }
@@ -558,7 +558,7 @@ export default function App() {
 
             if (existingByText) {
                 if (typeof status === "string" && existingByText.status !== status) {
-                    await cambiarEstado(existingByText.id, status);
+                    await changeStatus(existingByText.id, status);
                 }
 
                 if (Array.isArray(shelves) && shelves.length > 0) {
@@ -573,7 +573,7 @@ export default function App() {
                     }
                 }
 
-                await listarLibros();
+                await listBooks();
                 setSelectedBook((prev) => (prev && prev._discoverPreview ? { ...existingByText } : prev));
                 return;
             }
@@ -596,7 +596,7 @@ export default function App() {
                 },
             });
 
-            await listarLibros();
+            await listBooks();
 
             const refreshed = await api.listBooks(token);
             const nextBooks = Array.isArray(refreshed) ? refreshed : [];
@@ -639,22 +639,22 @@ export default function App() {
 
     useEffect(() => {
         if (user) {
-            listarLibros();
-            listarShelves();
+            listBooks();
+            listShelves();
         }
     }, [user]);
 
     useEffect(() => {
         if (activeTab === "discover" && user) {
-            cargarBookOfDay();
+            loadBookOfDay();
         }
     }, [activeTab, user]);
 
     useEffect(() => {
         if (selectedBook) {
             if (!selectedBook._discoverPreview) {
-                cargarNotas(selectedBook.id);
-                cargarReview(selectedBook.id);
+                loadNotes(selectedBook.id);
+                loadReview(selectedBook.id);
             } else {
                 setNotes([]);
                 setNoteText("");
@@ -702,12 +702,12 @@ export default function App() {
                     user={user}
                     onBack={() => {
                         setSelectedBook(null);
-                        cancelarEditarNota();
+                        cancelEditNote();
                     }}
-                    cambiarEstado={cambiarEstado}
-                    cambiarShelf={cambiarShelf}
+                    changeStatus={changeStatus}
+                    changeShelf={changeShelf}
                     customShelves={customShelfNames}
-                    borrarLibro={borrarLibro}
+                    deleteBook={deleteBook}
                     notes={notes}
                     notesLoading={notesLoading}
                     noteText={noteText}
@@ -716,8 +716,8 @@ export default function App() {
                     setNoteChapter={setNoteChapter}
                     noteQuote={noteQuote}
                     setNoteQuote={setNoteQuote}
-                    crearNota={crearNota}
-                    borrarNota={borrarNota}
+                    createNote={createNote}
+                    deleteNote={deleteNote}
                     editingNoteId={editingNoteId}
                     editText={editText}
                     setEditText={setEditText}
@@ -725,22 +725,22 @@ export default function App() {
                     setEditChapter={setEditChapter}
                     editQuote={editQuote}
                     setEditQuote={setEditQuote}
-                    empezarEditarNota={empezarEditarNota}
-                    cancelarEditarNota={cancelarEditarNota}
-                    guardarEdicionNota={guardarEdicionNota}
+                    startEditingNote={startEditingNote}
+                    cancelEditNote={cancelEditNote}
+                    saveNoteEdit={saveNoteEdit}
                     reviewText={reviewText}
                     setReviewText={setReviewText}
                     reviewRating={reviewRating}
                     setReviewRating={setReviewRating}
                     publicReviews={publicReviews}
                     publicReviewsLoading={publicReviewsLoading}
-                    cargarResenasPublicas={cargarResenasPublicas}
-                    guardarReview={guardarReview}
-                    compartirReviewAnonima={compartirReviewAnonima}
+                    loadPublicReviews={loadPublicReviews}
+                    saveReview={saveReview}
+                    shareAnonymousReview={shareAnonymousReview}
                     reviewIsPublic={reviewIsPublic}
                     setReviewIsPublic={setReviewIsPublic}
                     setReviewIsAnonymous={setReviewIsAnonymous}
-                    cargarReview={cargarReview}
+                    loadReview={loadReview}
                     myReview={myReview}
                     reviewLoading={reviewLoading}
                     toggleBookShelf={toggleBookShelf}
@@ -787,7 +787,7 @@ export default function App() {
                             books={books}
                             finished={finished}
                             currentlyReading={currentlyReading}
-                            buscarLibros={buscarLibros}
+                            searchBooks={searchBooks}
                             addFromResult={addFromResult}
                             toggleBookShelf={toggleBookShelf}
                             setSelectedBook={setSelectedBook}
@@ -812,10 +812,10 @@ export default function App() {
                             setSelectedBook={setSelectedBook}
                             styles={styles}
                             customShelves={customShelves}
-                            borrarShelf={borrarShelf}
+                            deleteShelf={deleteShelf}
                             newShelfName={newShelfName}
                             setNewShelfName={setNewShelfName}
-                            crearShelf={crearShelf}
+                            createShelf={createShelf}
                             inputStyle={inputStyle}
                             primaryBtn={primaryBtn}
 
@@ -850,7 +850,7 @@ export default function App() {
                             newShelfName={newShelfName}
                             setNewShelfName={setNewShelfName}
                             customShelves={customShelves}
-                            crearShelf={crearShelf}
+                            createShelf={createShelf}
                             inputStyle={inputStyle}
                             primaryBtn={primaryBtn}
                             styles={styles}

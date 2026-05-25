@@ -12,10 +12,10 @@ export default function Library({
                                     newShelfName,
                                     setNewShelfName,
                                     customShelves,
-                                    crearShelf,
+                                    createShelf,
                                     inputStyle,
                                     primaryBtn,
-                                    borrarShelf,
+                                    deleteShelf,
                                 }) {
     const { SOFT, BORDER, CARD, ACCENT, MUTED } = styles;
     // guardamos pestaña que está activa de "my shelves" (want to read, finished o interrupted)
@@ -377,7 +377,7 @@ export default function Library({
                                 />
 
                                 <button
-                                    onClick={crearShelf}
+                                    onClick={createShelf}
                                     style={primaryBtn}
                                     title="Crear shelf"
                                     type="button"
@@ -456,7 +456,7 @@ export default function Library({
                                                     type="button"
                                                     onClick={(e) => {
                                                         e.stopPropagation();
-                                                        borrarShelf(shelf);
+                                                        deleteShelf(shelf);
                                                     }}
                                                     title="Eliminar shelf"
                                                     style={{

@@ -9,8 +9,8 @@ export default function DiaryListView({
                                           notes,
                                           reviews,
                                           openBook,
-                                          empezarEditarNota,
-                                          borrarNota,
+                                          startEditingNote,
+                                          deleteNote,
                                           moodLabel,
                                           getPreviewText,
                                       }) {
@@ -286,7 +286,7 @@ export default function DiaryListView({
                                     type="button"
                                     onClick={() => {
                                         setMenuOpenId(null); // cerramos el menú de opciones
-                                        empezarEditarNota(n); // activamos la edición de la nota/cita
+                                        startEditingNote(n); // activamos la edición de la nota/cita
                                         onClose(); // cerramos el modal de All notes / All quotes
                                     }}
                                     style={{
@@ -300,7 +300,7 @@ export default function DiaryListView({
                                 </button>
                                 <button
                                     type="button"
-                                    onClick={() => borrarNota(n.id)}
+                                    onClick={() => deleteNote(n.id)}
                                     style={{
                                         ...subtleBtn,
                                         width: "100%",

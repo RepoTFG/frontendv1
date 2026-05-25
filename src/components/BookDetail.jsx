@@ -5,10 +5,10 @@ export default function BookDetail({
                                        user,
                                        book,
                                        onBack,
-                                       cambiarEstado,
-                                       cambiarShelf,
+                                       changeStatus,
+                                       changeShelf,
                                        customShelves,
-                                       borrarLibro,
+                                       deleteBook,
                                        notes,
                                        notesLoading,
                                        noteText,
@@ -17,8 +17,8 @@ export default function BookDetail({
                                        setNoteChapter,
                                        noteQuote,
                                        setNoteQuote,
-                                       crearNota,
-                                       borrarNota,
+                                       createNote,
+                                       deleteNote,
                                        editingNoteId,
                                        editText,
                                        setEditText,
@@ -26,20 +26,20 @@ export default function BookDetail({
                                        setEditChapter,
                                        editQuote,
                                        setEditQuote,
-                                       empezarEditarNota,
-                                       cancelarEditarNota,
-                                       guardarEdicionNota,
+                                       startEditingNote,
+                                       cancelEditNote,
+                                       saveNoteEdit,
                                        reviewText,
                                        setReviewText,
                                        reviewRating,
                                        setReviewRating,
                                        reviewLoading,
-                                       guardarReview,
-                                       compartirReviewAnonima,
-                                       cargarResenasPublicas,
+                                       saveReview,
+                                       shareAnonymousReview,
+                                       loadPublicReviews,
                                        publicReviews,
                                        publicReviewsLoading,
-                                       cargarReview,
+                                       loadReview,
                                        reviewIsPublic,
                                        setReviewIsPublic,
                                        setReviewIsAnonymous,
@@ -306,7 +306,7 @@ export default function BookDetail({
         }
     };
 
-    const guardarRelecturas = async () => {
+    const saveRereads = async () => {
         try {
             if (!user) return;
             if (isDeleted || isDiscoverPreview) return;
@@ -338,7 +338,7 @@ export default function BookDetail({
         }
 
         const nextStatus = book.status === statusKey ? "" : statusKey;
-        await cambiarEstado(book.id, nextStatus);
+        await changeStatus(book.id, nextStatus);
     };
 
     const handleToggleShelf = async (shelfName) => {
@@ -648,7 +648,7 @@ export default function BookDetail({
                             {!isDiscoverPreview && (
                                 <div style={{ marginTop: 14 }}>
                                     <button
-                                        onClick={() => !isDeleted && borrarLibro(book.id)}
+                                        onClick={() => !isDeleted && deleteBook(book.id)}
                                         style={{
                                             padding: "12px 14px",
                                             borderRadius: 14,
@@ -781,7 +781,7 @@ export default function BookDetail({
                                     </div>
 
                                     <button
-                                        onClick={() => guardarReview(book.id, { isPublic: reviewIsPublic, isAnonymous: true })}
+                                        onClick={() => saveReview(book.id, { isPublic: reviewIsPublic, isAnonymous: true })}
                                         style={primaryBtn}
                                         disabled={reviewLoading}
                                         type="button"
@@ -822,7 +822,7 @@ export default function BookDetail({
                                             )}
 
                                             <button
-                                                onClick={() => cargarReview(book.id)}
+                                                onClick={() => loadReview(book.id)}
                                                 style={{ ...ghostBtn, marginTop: 10 }}
                                                 disabled={reviewLoading}
                                                 type="button"
@@ -834,7 +834,7 @@ export default function BookDetail({
                                         <div style={{ fontSize: 12, color: MUTED }}>You have not saved a private review for this book yet.</div>
                                     )}
 
-                                    <button onClick={() => cargarResenasPublicas(book.id)} style={ghostBtn} type="button">
+                                    <button onClick={() => loadPublicReviews(book.id)} style={ghostBtn} type="button">
                                         See anonymous reviews from others
                                     </button>
 
@@ -939,7 +939,7 @@ export default function BookDetail({
                                         style={inputStyle}
                                     />
 
-                                    <button onClick={() => crearNota(book.id)} style={primaryBtn} type="button">
+                                    <button onClick={() => createNote(book.id)} style={primaryBtn} type="button">
                                         Save note
                                     </button>
                                 </div>
@@ -1007,7 +1007,7 @@ export default function BookDetail({
 
                                                         <div style={{ display: "flex", gap: 8 }}>
                                                             <button
-                                                                onClick={() => guardarEdicionNota(n.id)}
+                                                                onClick={() => saveNoteEdit(n.id)}
                                                                 style={{
                                                                     ...primaryBtn,
                                                                     width: "auto",
@@ -1018,7 +1018,7 @@ export default function BookDetail({
                                                                  Save
                                                             </button>
                                                             <button
-                                                                onClick={cancelarEditarNota}
+                                                                onClick={cancelEditNote}
                                                                 style={{
                                                                     ...ghostBtn,
                                                                     width: "auto",
@@ -1059,7 +1059,7 @@ export default function BookDetail({
 
                                                         <div style={{ marginTop: 10, display: "flex", gap: 8 }}>
                                                             <button
-                                                                onClick={() => empezarEditarNota(n)}
+                                                                onClick={() => startEditingNote(n)}
                                                                 style={{
                                                                     ...ghostBtn,
                                                                     width: "auto",
@@ -1070,7 +1070,7 @@ export default function BookDetail({
                                                                 Edit
                                                             </button>
                                                             <button
-                                                                onClick={() => borrarNota(n.id)}
+                                                                onClick={() => deleteNote(n.id)}
                                                                 style={{
                                                                     ...ghostBtn,
                                                                     width: "auto",
@@ -1232,7 +1232,7 @@ export default function BookDetail({
                             </button>
                         </div>
 
-                        <button onClick={guardarRelecturas} style={{ ...primaryBtn, marginTop: 12 }} type="button">
+                        <button onClick={saveRereads} style={{ ...primaryBtn, marginTop: 12 }} type="button">
                             Save
                         </button>
 
