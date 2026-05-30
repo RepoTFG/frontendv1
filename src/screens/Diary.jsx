@@ -861,6 +861,8 @@ export default function Diary({ books, setSelectedBook, styles }) {
                             border: `1px solid ${BORDER}`,
                             background: CARD,
                             padding: 14,
+                            maxHeight: "88vh",
+                            overflowY: "auto",
                         }}
                     >
                         <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "center" }}>
@@ -976,35 +978,49 @@ export default function Diary({ books, setSelectedBook, styles }) {
                                         style={{ ...inputStyle, resize: "vertical" }}
                                     />
 
-                                    <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
-                                        <div style={{ fontSize: 12, color: MUTED, fontWeight: 800, minWidth: 120 }}>Mode:</div>
+                                    <div style={{ display: "grid", gap: 8 }}>
+                                        <div style={{ fontSize: 12, color: MUTED, fontWeight: 800 }}>
+                                            Mode
+                                        </div>
 
-                                        <button
-                                            onClick={() => {
-                                                setReviewIsPublic(false);
-                                            }}
+                                        <div
                                             style={{
-                                                ...pill(!reviewIsPublic),
-                                                border: `1px solid ${!reviewIsPublic ? ACCENT : BORDER}`,
+                                                display: "grid",
+                                                gridTemplateColumns: "1fr",
+                                                gap: 8,
                                             }}
-                                            type="button"
                                         >
-                                            Just for me
-                                        </button>
+                                            <button
+                                                onClick={() => {
+                                                    setReviewIsPublic(false);
+                                                }}
+                                                style={{
+                                                    ...pill(!reviewIsPublic),
+                                                    border: `1px solid ${!reviewIsPublic ? ACCENT : BORDER}`,
+                                                    width: "100%",
+                                                    padding: "12px 14px",
+                                                }}
+                                                type="button"
+                                            >
+                                                Just for me
+                                            </button>
 
-                                        <button
-                                            onClick={() => {
-                                                setReviewIsPublic(true);
-                                            }}
-                                            style={{
-                                                ...pill(!!reviewIsPublic),
-                                                border: `1px solid ${reviewIsPublic ? ACCENT : BORDER}`,
-                                            }}
-                                            type="button"
-                                            title="Publish your review without showing your identity"
-                                        >
-                                            Publish anonymously
-                                        </button>
+                                            <button
+                                                onClick={() => {
+                                                    setReviewIsPublic(true);
+                                                }}
+                                                style={{
+                                                    ...pill(!!reviewIsPublic),
+                                                    border: `1px solid ${reviewIsPublic ? ACCENT : BORDER}`,
+                                                    width: "100%",
+                                                    padding: "12px 14px",
+                                                }}
+                                                type="button"
+                                                title="Publish your review without showing your identity"
+                                            >
+                                                Publish anonymously
+                                            </button>
+                                        </div>
                                     </div>
 
                                     <button
