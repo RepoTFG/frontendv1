@@ -367,7 +367,7 @@ export default function Library({
                                 <input
                                     value={newShelfName}
                                     onChange={(e) => setNewShelfName(e.target.value)}
-                                    placeholder="Nombre de la shelf"
+                                    placeholder="Shelf name"
                                     style={{
                                         ...inputStyle,
                                         flex: 1,
@@ -382,7 +382,7 @@ export default function Library({
                                     title="Crear shelf"
                                     type="button"
                                 >
-                                    + Crear
+                                    + Create
                                 </button>
                             </div>
                         </div>
@@ -398,7 +398,7 @@ export default function Library({
                                 fontSize: 14,
                             }}
                         >
-                            Aún no hay shelves personalizadas.
+                            No custom shelves yet.
                         </div>
                     ) : (
                         <>

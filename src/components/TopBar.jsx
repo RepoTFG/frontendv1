@@ -29,7 +29,7 @@ export default function TopBar({
                 </div>
 
                 <button onClick={onLogout} style={smallGhostBtn} type="button">
-                    Cerrar sesión
+                    Sign out
                 </button>
             </div>
         </div>
