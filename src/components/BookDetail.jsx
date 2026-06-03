@@ -39,7 +39,6 @@ export default function BookDetail({
                                        loadPublicReviews,
                                        publicReviews,
                                        publicReviewsLoading,
-                                       loadReview,
                                        reviewIsPublic,
                                        setReviewIsPublic,
                                        setReviewIsAnonymous,
@@ -821,14 +820,6 @@ export default function BookDetail({
                                                 </div>
                                             )}
 
-                                            <button
-                                                onClick={() => loadReview(book.id)}
-                                                style={{ ...ghostBtn, marginTop: 10 }}
-                                                disabled={reviewLoading}
-                                                type="button"
-                                            >
-                                                {reviewLoading ? "Loading..." : "Reload my review"}
-                                            </button>
                                         </div>
                                     ) : (
                                         <div style={{ fontSize: 12, color: MUTED }}>You have not saved a private review for this book yet.</div>
