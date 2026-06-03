@@ -840,10 +840,7 @@ export default function BookDetail({
 
                                     {publicReviewsLoading ? (
                                         <p style={{ opacity: 0.7, margin: 0 }}>Loading reviews...</p>
-                                    ) : publicReviews.length === 0 ? (
-                                        // si no hay resultados
-                                        <p style={{ opacity: 0.7, margin: 0 }}>There are no public reviews for this book yet.</p>
-                                    ) : (
+                                    ) : publicReviews.length > 0 ? (
                                         <div style={{ display: "grid", gap: 10, marginTop: 4 }}>
                                             {publicReviews.map((r) => (
                                                 <div
@@ -856,11 +853,17 @@ export default function BookDetail({
                                                     }}
                                                 >
                                                     <div style={{ display: "flex", justifyContent: "space-between", gap: 10 }}>
-                                                        <div style={{ fontWeight: 900, color: ACCENT }}>{r.authorLabel || "Anonymous"}</div>
-                                                        <div style={{ fontSize: 12, color: MUTED }}>⭐ {r.rating || "?"}/5</div>
+                                                        <div style={{ fontWeight: 900, color: ACCENT }}>
+                                                            {r.authorLabel || "Anonymous"}
+                                                        </div>
+                                                        <div style={{ fontSize: 12, color: MUTED }}>
+                                                            ⭐ {r.rating || "?"}/5
+                                                        </div>
                                                     </div>
 
-                                                    <div style={{ marginTop: 8, whiteSpace: "pre-wrap", color: ACCENT }}>{r.text}</div>
+                                                    <div style={{ marginTop: 8, whiteSpace: "pre-wrap", color: ACCENT }}>
+                                                        {r.text}
+                                                    </div>
 
                                                     {r.createdAt && (
                                                         <div style={{ marginTop: 8, fontSize: 11, color: MUTED }}>
@@ -870,7 +873,7 @@ export default function BookDetail({
                                                 </div>
                                             ))}
                                         </div>
-                                    )}
+                                    ) : null}
                                 </div>
                             </div>
                         )}
