@@ -403,7 +403,8 @@ export default function App() {
     const loadPublicReviews = async (bookId) => {
         setPublicReviewsLoading(true);
         try {
-            const data = await api.getPublicReviews(bookId);
+            const token = await auth.currentUser.getIdToken();
+            const data = await api.getPublicReviews(token, bookId);
             setPublicReviews(Array.isArray(data) ? data : []);
         } catch (e) {
             showAlert(e.message || "Error loading public reviews");

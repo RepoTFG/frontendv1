@@ -164,13 +164,9 @@ export const api = {
             body: JSON.stringify(payload),
         }),
 
-    // públicas (sin token)
-    getPublicReviews: async (bookId) => {
-        const res = await fetch(`${API_BASE}/api/reviews/public?bookId=${bookId}`);
-        const data = await safeJson(res);
-        if (!res.ok) throw new Error(data?.error || "Error al cargar reseñas públicas");
-        return data;
-    },
+    // públicas
+    getPublicReviews: (token, bookId) =>
+        authFetch(`/api/reviews/public?bookId=${bookId}`, { token }),
     // reviews todas (publicas y privadas)
     getMyReviews: (token) => authFetch("/api/reviews/mine", { token }),
     // reviews anónimas
